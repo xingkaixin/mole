@@ -1,0 +1,15 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "mole",
+  "outputfilename": "mole",
+  "frontend:install": "bun install",
+  "frontend:build": "bun run build",
+  "frontend:dev:watcher": "bun run dev",
+  "frontend:dev:serverUrl": "auto",
+  "assetdir": "./build",
+  "author": {
+    "name": "XingKaiXin",
+    "email": "xingkaixin@gmail.com",
+    "url": "https://github.com/xingkaixin"
+  }
+}
