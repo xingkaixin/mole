@@ -347,6 +347,56 @@ func (sm *StorageManager) GetAnalysisResults(connectionID string) ([]*AnalysisRe
 	return results, nil
 }
 
+// GetAllAnalysisResults 获取所有分析结果
+func (sm *StorageManager) GetAllAnalysisResults() ([]*AnalysisResult, error) {
+	query := `
+	SELECT id, connection_id, table_name, rules, results, status, started_at, completed_at, duration
+	FROM analysis_results
+	ORDER BY started_at DESC
+	`
+
+	rows, err := sm.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []*AnalysisResult
+	for rows.Next() {
+		var result AnalysisResult
+		var rulesJSON, resultsJSON string
+		var durationSeconds int64
+
+		err := rows.Scan(
+			&result.ID,
+			&result.DatabaseID,
+			&result.TableName,
+			&rulesJSON,
+			&resultsJSON,
+			&result.Status,
+			&result.StartedAt,
+			&result.CompletedAt,
+			&durationSeconds,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// 反序列化规则和结果
+		if err := json.Unmarshal([]byte(rulesJSON), &result.Rules); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal rules: %w", err)
+		}
+		if err := json.Unmarshal([]byte(resultsJSON), &result.Results); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal results: %w", err)
+		}
+
+		result.Duration = time.Duration(durationSeconds) * time.Second
+		results = append(results, &result)
+	}
+
+	return results, nil
+}
+
 // GetAnalysisResult 获取单个分析结果
 func (sm *StorageManager) GetAnalysisResult(resultID string) (*AnalysisResult, error) {
 	query := `

@@ -165,9 +165,30 @@ func (a *App) GetAnalysisResults(connectionID string) ([]map[string]interface{},
 		return []map[string]interface{}{}, nil
 	}
 
-	results, err := a.storageManager.GetAnalysisResults(connectionID)
+	var results []*AnalysisResult
+	var err error
+
+	// 如果connectionID为空，获取所有结果；否则获取特定连接的结果
+	if connectionID == "" || connectionID == "all" {
+		results, err = a.storageManager.GetAllAnalysisResults()
+	} else {
+		results, err = a.storageManager.GetAnalysisResults(connectionID)
+	}
+
 	if err != nil {
 		return nil, err
+	}
+
+	// 获取所有数据库连接信息，用于显示连接名称
+	connections, err := a.storageManager.GetConnections()
+	if err != nil {
+		connections = []DatabaseConfig{} // 如果获取失败，使用空列表
+	}
+
+	// 创建连接ID到连接名称的映射
+	connectionMap := make(map[string]string)
+	for _, conn := range connections {
+		connectionMap[conn.ID] = conn.Name
 	}
 
 	// 转换为前端需要的格式
@@ -176,6 +197,7 @@ func (a *App) GetAnalysisResults(connectionID string) ([]map[string]interface{},
 		formattedResults = append(formattedResults, map[string]interface{}{
 			"id":           result.ID,
 			"databaseId":   result.DatabaseID,
+			"databaseName": connectionMap[result.DatabaseID], // 添加数据库名称
 			"tableName":    result.TableName,
 			"rules":        result.Rules,
 			"results":      result.Results,
@@ -187,6 +209,14 @@ func (a *App) GetAnalysisResults(connectionID string) ([]map[string]interface{},
 	}
 
 	return formattedResults, nil
+}
+
+// DeleteAnalysisResult 删除分析结果
+func (a *App) DeleteAnalysisResult(resultID string) error {
+	if a.storageManager == nil {
+		return fmt.Errorf("storage manager not initialized")
+	}
+	return a.storageManager.DeleteAnalysisResult(resultID)
 }
 
 // GetAvailableRules 获取可用规则列表

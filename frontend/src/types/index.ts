@@ -24,7 +24,8 @@ export type AppStep =
 	| "analysis_tables"
 	| "table_selection"
 	| "analysis"
-	| "results";
+	| "results"
+	| "reports";
 
 export interface TableInfo {
 	name: string;

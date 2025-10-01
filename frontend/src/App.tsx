@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Sidebar } from "@/components/Sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { AnalysisPage } from "@/pages/AnalysisPage";
+import { AnalysisReportsPage } from "@/pages/AnalysisReportsPage";
 import { AnalysisTablesPage } from "@/pages/AnalysisTablesPage";
 import { ConfigPage } from "@/pages/ConfigPage";
 import { ResultsPage } from "@/pages/ResultsPage";
@@ -28,6 +29,7 @@ import {
 	SaveTableSelections,
 	TestDatabaseConnection,
 	StartAnalysisTasks,
+	DeleteAnalysisResult,
 } from "../wailsjs/go/backend/App.js";
 
 function App() {
@@ -400,12 +402,30 @@ function App() {
 		setCurrentStep("welcome");
 	};
 
+	const handleGoToReports = () => {
+		setCurrentStep("reports");
+	};
+
+	const handleDeleteAnalysisResult = async (resultId: string) => {
+		try {
+			await DeleteAnalysisResult(resultId);
+			toast.success("分析结果已删除");
+		} catch (error) {
+			console.error("Failed to delete analysis result:", error);
+			toast.error("删除分析结果失败");
+		}
+	};
+
 	return (
 		<div className="h-screen flex bg-white">
 			<Toaster />
 
 			{/* 左侧功能栏 */}
-			<Sidebar onAddConnection={handleAddConnection} onGoHome={handleGoHome} />
+			<Sidebar
+				onAddConnection={handleAddConnection}
+				onGoHome={handleGoHome}
+				onGoToReports={handleGoToReports}
+			/>
 
 			{/* 主内容区域 */}
 			<div className="flex-1 overflow-auto">
@@ -466,6 +486,16 @@ function App() {
 					<ResultsPage
 						connectionId={currentConnection?.id}
 						onGetAnalysisResults={GetAnalysisResults}
+					/>
+				)}
+
+				{currentStep === "reports" && (
+					<AnalysisReportsPage
+						connectionId={currentConnection?.id || ""}
+						onGetAnalysisResults={GetAnalysisResults}
+						onGetDatabaseConnections={GetDatabaseConnections}
+						onBack={handleGoHome}
+						onDeleteAnalysisResult={handleDeleteAnalysisResult}
 					/>
 				)}
 			</div>
