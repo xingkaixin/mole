@@ -315,7 +315,7 @@ export function AnalysisReportsPage({
 									<div className="flex items-center gap-2">
 										<span className="text-sm text-gray-500">分析规则:</span>
 										<div className="flex gap-1">
-											{result.rules.map(rule => (
+											{result.rules.map((rule: string) => (
 												<Badge key={rule} variant="outline" className="text-xs">
 													{rule}
 												</Badge>

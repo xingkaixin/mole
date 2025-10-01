@@ -44,41 +44,69 @@ func (r *NonNullRateRule) GetDescription() string {
 }
 
 func (r *NonNullRateRule) Execute(db *sql.DB, tableName string, config *DatabaseConfig) (interface{}, error) {
-	// 获取表的列信息
-	rows, err := db.Query(`
-		SELECT column_name
-		FROM information_schema.columns
-		WHERE table_schema = ? AND table_name = ?
-	`, config.Database, tableName)
+	fmt.Printf("NonNullRateRule: Starting analysis for table %s in database %s\n", tableName, config.Database)
+
+	// 获取表的列信息 - 使用更简单的方式，避免复杂的查询
+	query := fmt.Sprintf("SHOW COLUMNS FROM %s", tableName)
+	rows, err := db.Query(query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get columns for table %s: %w", tableName, err)
+		fmt.Printf("NonNullRateRule: Failed to get columns for table %s with SHOW COLUMNS: %v\n", tableName, err)
+		// 尝试使用information_schema作为备用方案
+		rows, err = db.Query(`
+			SELECT column_name
+			FROM information_schema.columns
+			WHERE table_schema = ? AND table_name = ?
+		`, config.Database, tableName)
+		if err != nil {
+			fmt.Printf("NonNullRateRule: Failed to get columns for table %s with information_schema: %v\n", tableName, err)
+			return nil, fmt.Errorf("failed to get columns for table %s: %w", tableName, err)
+		}
 	}
 	defer rows.Close()
 
 	var columns []string
 	for rows.Next() {
 		var columnName string
-		if err := rows.Scan(&columnName); err != nil {
-			return nil, fmt.Errorf("failed to scan column name: %w", err)
+		var columnType, nullType, keyType, defaultValue, extraType *string
+		// SHOW COLUMNS返回6个字段，某些字段可能为NULL，使用指针类型
+		if err := rows.Scan(&columnName, &columnType, &nullType, &keyType, &defaultValue, &extraType); err != nil {
+			fmt.Printf("NonNullRateRule: Failed to scan column name: %v\n", err)
+			continue // 不跳过整个分析，只跳过这个列
 		}
 		columns = append(columns, columnName)
 	}
+	fmt.Printf("NonNullRateRule: Found %d columns for table %s: %v\n", len(columns), tableName, columns)
+
+	if len(columns) == 0 {
+		fmt.Printf("NonNullRateRule: No columns found for table %s\n", tableName)
+		return make(map[string]float64), nil
+	}
+
+	// 先获取表的总行数（只需要获取一次）
+	var totalCount int64
+	err = db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName)).Scan(&totalCount)
+	if err != nil {
+		fmt.Printf("NonNullRateRule: Failed to get total row count for table %s: %v\n", tableName, err)
+		return nil, fmt.Errorf("failed to get row count for table %s: %w", tableName, err)
+	}
+	fmt.Printf("NonNullRateRule: Table %s total rows: %d\n", tableName, totalCount)
 
 	// 计算每列的非空值率
 	result := make(map[string]float64)
 	for _, column := range columns {
-		var totalCount, nonNullCount int64
-
-		// 获取总行数
-		err := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName)).Scan(&totalCount)
-		if err != nil {
-			continue // 跳过该列
-		}
+		fmt.Printf("NonNullRateRule: Analyzing column %s\n", column)
 
 		// 获取非空值数量
-		err = db.QueryRow(fmt.Sprintf("SELECT COUNT(%s) FROM %s", column, tableName)).Scan(&nonNullCount)
+		var nonNullCount int64
+		query := fmt.Sprintf("SELECT COUNT(%s) FROM %s", column, tableName)
+		fmt.Printf("NonNullRateRule: Executing query: %s\n", query)
+
+		err = db.QueryRow(query).Scan(&nonNullCount)
 		if err != nil {
-			continue // 跳过该列
+			fmt.Printf("NonNullRateRule: Failed to get non-null count for column %s: %v\n", column, err)
+			// 设置为0，不跳过整个列
+			result[column] = 0.0
+			continue
 		}
 
 		var nonNullRate float64
@@ -86,8 +114,10 @@ func (r *NonNullRateRule) Execute(db *sql.DB, tableName string, config *Database
 			nonNullRate = float64(nonNullCount) / float64(totalCount)
 		}
 		result[column] = nonNullRate
+		fmt.Printf("NonNullRateRule: Column %s: %d/%d = %.2f%%\n", column, nonNullCount, totalCount, nonNullRate*100)
 	}
 
+	fmt.Printf("NonNullRateRule: Completed analysis for table %s, result: %v\n", tableName, result)
 	return result, nil
 }
 

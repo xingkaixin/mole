@@ -1,13 +1,14 @@
-import { BarChart3, Home, Plus } from "lucide-react";
+import { BarChart3, Home, Plus, ListTodo } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SidebarProps {
 	onAddConnection: () => void;
 	onGoHome: () => void;
 	onGoToReports: () => void;
+	onGoToTasks: () => void;
 }
 
-export function Sidebar({ onAddConnection, onGoHome, onGoToReports }: SidebarProps) {
+export function Sidebar({ onAddConnection, onGoHome, onGoToReports, onGoToTasks }: SidebarProps) {
 	return (
 		<div className="w-16 bg-white border-r border-gray-200 flex flex-col items-center py-4 space-y-4">
 			{/* Home Button */}
@@ -30,6 +31,17 @@ export function Sidebar({ onAddConnection, onGoHome, onGoToReports }: SidebarPro
 				title="分析报告"
 			>
 				<BarChart3 className="w-5 h-5" />
+			</Button>
+
+			{/* Task Progress Button */}
+			<Button
+				variant="ghost"
+				size="icon"
+				onClick={onGoToTasks}
+				className="w-12 h-12 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors"
+				title="待执行任务"
+			>
+				<ListTodo className="w-5 h-5" />
 			</Button>
 
 			{/* Add Connection Button */}

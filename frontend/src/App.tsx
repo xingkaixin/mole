@@ -8,6 +8,7 @@ import { AnalysisTablesPage } from "@/pages/AnalysisTablesPage";
 import { ConfigPage } from "@/pages/ConfigPage";
 import { ResultsPage } from "@/pages/ResultsPage";
 import { TableSelectionPage } from "@/pages/TablesPage";
+import { TaskProgressPage } from "@/pages/TaskProgressPage";
 import { WelcomePage } from "@/pages/WelcomePage";
 import type {
 	AppStep,
@@ -30,6 +31,9 @@ import {
 	TestDatabaseConnection,
 	StartAnalysisTasks,
 	DeleteAnalysisResult,
+	GetTaskStatus,
+	GetTasksByDatabase,
+	CancelTask,
 } from "../wailsjs/go/backend/App.js";
 
 function App() {
@@ -295,12 +299,7 @@ function App() {
 			// 使用新的并发分析系统
 			const taskId = await StartAnalysisTasks(currentConnection.id, selectedTables);
 			console.log("Analysis task started:", taskId);
-
-			// 模拟分析完成，跳转到结果页面
-			setTimeout(() => {
-				setCurrentStep("results");
-				toast.success("分析任务已完成");
-			}, 3000);
+			toast.success("分析任务已启动");
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : String(error));
 			setCurrentStep("analysis_tables");
@@ -406,6 +405,10 @@ function App() {
 		setCurrentStep("reports");
 	};
 
+	const handleGoToTasks = () => {
+		setCurrentStep("tasks");
+	};
+
 	const handleDeleteAnalysisResult = async (resultId: string) => {
 		try {
 			await DeleteAnalysisResult(resultId);
@@ -425,6 +428,7 @@ function App() {
 				onAddConnection={handleAddConnection}
 				onGoHome={handleGoHome}
 				onGoToReports={handleGoToReports}
+				onGoToTasks={handleGoToTasks}
 			/>
 
 			{/* 主内容区域 */}
@@ -479,6 +483,10 @@ function App() {
 					<AnalysisPage
 						selectedTablesCount={selectedTables.length}
 						selectedTables={selectedTables}
+						currentConnectionId={currentConnection?.id || ""}
+						onGetTaskStatus={GetTaskStatus}
+						onGetTasksByDatabase={GetTasksByDatabase}
+						onCancelTask={CancelTask}
 					/>
 				)}
 
@@ -496,6 +504,16 @@ function App() {
 						onGetDatabaseConnections={GetDatabaseConnections}
 						onBack={handleGoHome}
 						onDeleteAnalysisResult={handleDeleteAnalysisResult}
+					/>
+				)}
+
+				{currentStep === "tasks" && (
+					<TaskProgressPage
+						onGetTasksByDatabase={GetTasksByDatabase}
+						onGetDatabaseConnections={GetDatabaseConnections}
+						onCancelTask={CancelTask}
+						onGoToReports={handleGoToReports}
+						onGoHome={handleGoHome}
 					/>
 				)}
 			</div>

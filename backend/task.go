@@ -20,39 +20,46 @@ const (
 
 // AnalysisTask 分析任务
 type AnalysisTask struct {
-	ID           string        `json:"id"`
-	TableName    string        `json:"table_name"`
-	DatabaseID   string        `json:"database_id"`
-	Status       TaskStatus    `json:"status"`
-	Progress     float64       `json:"progress"` // 0-100
-	ErrorMessage string        `json:"error_message"`
-	StartedAt    *time.Time    `json:"started_at"`
-	CompletedAt  *time.Time    `json:"completed_at"`
-	Duration     time.Duration `json:"duration"`
-	Result       interface{}   `json:"result"`
+	ID             string          `json:"id"`
+	TableName      string          `json:"table_name"`
+	DatabaseID     string          `json:"database_id"`
+	DatabaseConfig *DatabaseConfig `json:"database_config"`
+	Status         TaskStatus      `json:"status"`
+	Progress       float64         `json:"progress"` // 0-100
+	ErrorMessage   string          `json:"error_message"`
+	StartedAt      *time.Time      `json:"started_at"`
+	CompletedAt    *time.Time      `json:"completed_at"`
+	Duration       time.Duration   `json:"duration"`
+	Result         interface{}     `json:"result"`
 }
 
 // TaskManager 任务管理器
 type TaskManager struct {
-	tasks      map[string]*AnalysisTask
-	mu         sync.RWMutex
-	maxWorkers int
-	taskQueue  chan *AnalysisTask
-	workers    chan struct{}
-	ctx        context.Context
-	cancel     context.CancelFunc
+	tasks          map[string]*AnalysisTask
+	mu             sync.RWMutex
+	maxWorkers     int
+	taskQueue      chan *AnalysisTask
+	workers        chan struct{}
+	ctx            context.Context
+	cancel         context.CancelFunc
+	analysisEngine *AnalysisEngine  // 添加分析引擎引用
+	dbManager      *DatabaseManager // 添加数据库管理器引用
+	storageManager *StorageManager  // 添加存储管理器引用
 }
 
 // NewTaskManager 创建任务管理器
-func NewTaskManager(maxWorkers int) *TaskManager {
+func NewTaskManager(maxWorkers int, analysisEngine *AnalysisEngine, dbManager *DatabaseManager, storageManager *StorageManager) *TaskManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &TaskManager{
-	tasks:      make(map[string]*AnalysisTask),
-	maxWorkers: maxWorkers,
-	taskQueue:  make(chan *AnalysisTask, 1000), // 缓冲队列
-	workers:    make(chan struct{}, maxWorkers),
-	ctx:        ctx,
-	cancel:     cancel,
+		tasks:          make(map[string]*AnalysisTask),
+		maxWorkers:     maxWorkers,
+		taskQueue:      make(chan *AnalysisTask, 1000), // 缓冲队列
+		workers:        make(chan struct{}, maxWorkers),
+		ctx:            ctx,
+		cancel:         cancel,
+		analysisEngine: analysisEngine,
+		dbManager:      dbManager,
+		storageManager: storageManager,
 	}
 }
 
@@ -173,9 +180,109 @@ func (tm *TaskManager) executeTask(task *AnalysisTask) {
 	task.StartedAt = &now
 	tm.mu.Unlock()
 
-	// 这里应该调用具体的分析逻辑
-	// 暂时模拟任务执行
-	tm.simulateTaskExecution(task)
+	// 执行真正的分析任务
+	tm.performTableAnalysis(task)
+}
+
+// performTableAnalysis 执行真正的表分析
+func (tm *TaskManager) performTableAnalysis(task *AnalysisTask) {
+	// 更新进度为10%
+	tm.updateTaskProgress(task.ID, 10)
+
+	// 执行真正的分析
+	if tm.analysisEngine != nil && tm.dbManager != nil {
+		db := tm.dbManager.GetDB()
+		if db == nil {
+			fmt.Printf("Failed to get DB connection for task %s\n", task.ID)
+			tm.mu.Lock()
+			task.Status = TaskStatusFailed
+			task.ErrorMessage = "数据库连接不可用"
+			tm.mu.Unlock()
+			return
+		}
+
+		// 获取分析规则
+		ruleNames := tm.analysisEngine.GetAvailableRules()
+		if len(ruleNames) > 0 {
+			// 更新进度为30%
+			tm.updateTaskProgress(task.ID, 30)
+
+			// 使用传入的数据库配置执行分析
+			analysisResults, err := tm.analysisEngine.ExecuteAnalysis(db, task.TableName, task.DatabaseConfig, ruleNames)
+
+			// 更新进度为80%
+			tm.updateTaskProgress(task.ID, 80)
+
+			tm.mu.Lock()
+			defer tm.mu.Unlock()
+
+			now := time.Now()
+			task.CompletedAt = &now
+			task.Duration = now.Sub(*task.StartedAt)
+
+			if err != nil {
+				task.Status = TaskStatusFailed
+				task.ErrorMessage = err.Error()
+				task.Result = map[string]interface{}{
+					"table_name": task.TableName,
+					"status":     "failed",
+					"error":      err.Error(),
+				}
+
+				// 保存失败的分析结果到存储管理器
+				if tm.storageManager != nil {
+					result := &AnalysisResult{
+						ID:          fmt.Sprintf("result_%s_%s", task.TableName, now.Format("20060102150405")),
+						DatabaseID:  task.DatabaseID,
+						TableName:   task.TableName,
+						Rules:       ruleNames,
+						Results:     map[string]interface{}{"error": err.Error()},
+						Status:      "failed",
+						StartedAt:   *task.StartedAt,
+						CompletedAt: &now,
+						Duration:    task.Duration,
+					}
+					tm.storageManager.SaveAnalysisResult(result)
+				}
+			} else {
+				task.Status = TaskStatusCompleted
+				task.Progress = 100
+				task.Result = map[string]interface{}{
+					"table_name": task.TableName,
+					"status":     "completed",
+					"results":    analysisResults,
+				}
+
+				// 保存分析结果到存储管理器
+				if tm.storageManager != nil {
+					result := &AnalysisResult{
+						ID:          fmt.Sprintf("result_%s_%s", task.TableName, now.Format("20060102150405")),
+						DatabaseID:  task.DatabaseID,
+						TableName:   task.TableName,
+						Rules:       ruleNames,
+						Results:     analysisResults,
+						Status:      "completed",
+						StartedAt:   *task.StartedAt,
+						CompletedAt: &now,
+						Duration:    task.Duration,
+					}
+					tm.storageManager.SaveAnalysisResult(result)
+				}
+			}
+			return
+		}
+	}
+
+}
+
+// updateTaskProgress 更新任务进度
+func (tm *TaskManager) updateTaskProgress(taskID string, progress float64) {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+
+	if task, exists := tm.tasks[taskID]; exists {
+		task.Progress = progress
+	}
 }
 
 // simulateTaskExecution 模拟任务执行

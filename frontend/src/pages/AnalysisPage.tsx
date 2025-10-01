@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { ModeToggle } from "@/components/mode-toggle";
 import type { AnalysisTask } from "@/components/AnalysisProgress";
@@ -6,32 +6,91 @@ import type { AnalysisTask } from "@/components/AnalysisProgress";
 interface AnalysisPageProps {
 	selectedTablesCount: number;
 	selectedTables: string[];
+	currentConnectionId: string;
+	onGetTaskStatus: (taskId: string) => Promise<any>;
+	onGetTasksByDatabase: (databaseId: string) => Promise<any[]>;
+	onCancelTask: (taskId: string) => Promise<void>;
 }
 
-export function AnalysisPage({ selectedTablesCount, selectedTables }: AnalysisPageProps) {
+export function AnalysisPage({
+	selectedTablesCount,
+	selectedTables,
+	currentConnectionId,
+	onGetTaskStatus,
+	onGetTasksByDatabase,
+	onCancelTask,
+}: AnalysisPageProps) {
 	const [tasks, setTasks] = useState<AnalysisTask[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
 
-	// 基于实际选择的表创建任务
+	// 获取任务状态的轮询函数
+	const fetchTasks = useCallback(async () => {
+		try {
+			const tasksData = await onGetTasksByDatabase(currentConnectionId);
+			const formattedTasks: AnalysisTask[] = tasksData.map((task: any) => ({
+				id: task.id,
+				tableName: task.tableName,
+				status: task.status,
+				progress: task.progress,
+				errorMessage: task.errorMessage,
+			}));
+			setTasks(formattedTasks);
+		} catch (error) {
+			console.error("Failed to fetch tasks:", error);
+		} finally {
+			setIsLoading(false);
+		}
+	}, [currentConnectionId, onGetTasksByDatabase]);
+
+	// 初始化加载任务状态
 	useEffect(() => {
-		// 这里应该从后端获取实时任务状态
-		// 暂时基于选择的表创建任务
-		const analysisTasks: AnalysisTask[] = selectedTables.map((tableName, index) => ({
-			id: (index + 1).toString(),
-			tableName: tableName,
-			status: index === 0 ? "running" : "pending", // 第一个任务运行中，其他等待
-			progress: index === 0 ? 50 : 0,
-		}));
-		setTasks(analysisTasks);
-	}, [selectedTables]);
+		if (currentConnectionId) {
+			fetchTasks();
+		}
+	}, [fetchTasks, currentConnectionId]);
 
-	const handleCancelTask = (taskId: string) => {
-		// 取消单个任务
-		console.log("Cancelling task:", taskId);
+	// 设置定时轮询，每2秒更新一次任务状态
+	useEffect(() => {
+		if (tasks.length === 0) return;
+
+		const hasActiveTasks = tasks.some(task =>
+			task.status === "running" || task.status === "pending"
+		);
+
+		if (!hasActiveTasks) return;
+
+		const interval = setInterval(() => {
+			fetchTasks();
+		}, 2000);
+
+		return () => clearInterval(interval);
+	}, [tasks, fetchTasks]);
+
+	const handleCancelTask = async (taskId: string) => {
+		try {
+			await onCancelTask(taskId);
+			// 立即刷新任务状态
+			fetchTasks();
+		} catch (error) {
+			console.error("Failed to cancel task:", error);
+		}
 	};
 
-	const handleCancelAll = () => {
-		// 取消所有任务
-		console.log("Cancelling all tasks");
+	const handleCancelAll = async () => {
+		const activeTasks = tasks.filter(task =>
+			task.status === "running" || task.status === "pending"
+		);
+
+		for (const task of activeTasks) {
+			try {
+				await onCancelTask(task.id);
+			} catch (error) {
+				console.error(`Failed to cancel task ${task.id}:`, error);
+			}
+		}
+
+		// 立即刷新任务状态
+		fetchTasks();
 	};
 
 	return (
@@ -42,6 +101,7 @@ export function AnalysisPage({ selectedTablesCount, selectedTables }: AnalysisPa
 			<AnalysisProgress
 				selectedTablesCount={selectedTablesCount}
 				tasks={tasks}
+				isLoading={isLoading}
 				onCancelTask={handleCancelTask}
 				onCancelAll={handleCancelAll}
 			/>

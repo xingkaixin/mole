@@ -13,6 +13,7 @@ type App struct {
 	analysisEngine  *AnalysisEngine
 	storageManager  *StorageManager
 	currentConfig   *DatabaseConfig
+	taskManager     *TaskManager
 }
 
 // NewApp creates a new App application struct
@@ -38,6 +39,10 @@ func (a *App) Startup(ctx context.Context) {
 	} else {
 		a.storageManager = storageManager
 	}
+
+	// 初始化任务管理器
+	a.taskManager = NewTaskManager(5, a.analysisEngine, a.dbManager, a.storageManager)
+	a.taskManager.Start()
 }
 
 // TestDatabaseConnection 测试数据库连接
@@ -81,82 +86,34 @@ func (a *App) StartAnalysisTasks(connectionID string, tables []string) (string, 
 		return "", fmt.Errorf("no active database connection")
 	}
 
-	if a.dbManager == nil {
-		return "", fmt.Errorf("database manager not initialized")
+	if a.taskManager == nil {
+		return "", fmt.Errorf("task manager not initialized")
 	}
 
-	db := a.dbManager.GetDB()
-	if db == nil {
-		return "", fmt.Errorf("database connection not established")
-	}
+	// 创建任务组ID
+	groupID := fmt.Sprintf("analysis_%s_%d", connectionID, time.Now().Unix())
 
-	// 创建任务ID
-	taskID := fmt.Sprintf("analysis_%s_%d", connectionID, time.Now().Unix())
+	fmt.Printf("Starting parallel analysis tasks for connection %s, tables: %v\n", connectionID, tables)
 
-	// 获取可用的分析规则
-	var ruleNames []string
-	if a.analysisEngine != nil {
-		ruleNames = a.analysisEngine.GetAvailableRules()
-	}
-
-	if len(ruleNames) == 0 {
-		return "", fmt.Errorf("no analysis rules available")
-	}
-
-	fmt.Printf("Starting real analysis tasks for connection %s, tables: %v, rules: %v\n", connectionID, tables, ruleNames)
-
-	// 对每个表执行真正的分析
+	// 为每个表创建任务并添加到任务管理器
 	for _, tableName := range tables {
-		resultID := fmt.Sprintf("result_%s_%s", tableName, time.Now().Format("20060102150405"))
-		startedAt := time.Now()
+		task := &AnalysisTask{
+			ID:             fmt.Sprintf("%s_%s", groupID, tableName),
+			TableName:      tableName,
+			DatabaseID:     connectionID,
+			DatabaseConfig: a.currentConfig, // 传入完整的数据库配置
+			Status:         TaskStatusPending,
+			Progress:       0,
+		}
 
-		// 使用分析引擎执行真正的分析
-		analysisResults, err := a.analysisEngine.ExecuteAnalysis(db, tableName, a.currentConfig, ruleNames)
+		err := a.taskManager.AddTask(task)
 		if err != nil {
-			fmt.Printf("Failed to analyze table %s: %v\n", tableName, err)
-
-			// 创建失败的结果
-			result := &AnalysisResult{
-				ID:          resultID,
-				DatabaseID:  connectionID,
-				TableName:   tableName,
-				Rules:       ruleNames,
-				Results:     map[string]interface{}{"error": err.Error()},
-				Status:      "failed",
-				StartedAt:   startedAt,
-				Duration:    time.Since(startedAt),
-			}
-
-			if a.storageManager != nil {
-				a.storageManager.SaveAnalysisResult(result)
-			}
-			continue
+			fmt.Printf("Failed to add task for table %s: %v\n", tableName, err)
+			return "", fmt.Errorf("failed to add task for table %s: %v", tableName, err)
 		}
-
-		completedAt := time.Now()
-		duration := completedAt.Sub(startedAt)
-
-		// 创建成功的结果
-		result := &AnalysisResult{
-			ID:          resultID,
-			DatabaseID:  connectionID,
-			TableName:   tableName,
-			Rules:       ruleNames,
-			Results:     analysisResults,
-			Status:      "completed",
-			StartedAt:   startedAt,
-			CompletedAt: &completedAt,
-			Duration:    duration,
-		}
-
-		if a.storageManager != nil {
-			a.storageManager.SaveAnalysisResult(result)
-		}
-
-		fmt.Printf("Completed analysis for table %s in %v\n", tableName, duration)
 	}
 
-	return taskID, nil
+	return groupID, nil
 }
 
 // GetAnalysisResults 获取分析结果
@@ -225,6 +182,65 @@ func (a *App) GetAvailableRules() []string {
 		return a.analysisEngine.GetAvailableRules()
 	}
 	return []string{}
+}
+
+// GetTaskStatus 获取任务状态
+func (a *App) GetTaskStatus(taskID string) (map[string]interface{}, error) {
+	if a.taskManager == nil {
+		return nil, fmt.Errorf("task manager not initialized")
+	}
+
+	task, exists := a.taskManager.GetTask(taskID)
+	if !exists {
+		return nil, fmt.Errorf("task not found")
+	}
+
+	return map[string]interface{}{
+		"id":           task.ID,
+		"tableName":    task.TableName,
+		"databaseId":   task.DatabaseID,
+		"status":       task.Status,
+		"progress":     task.Progress,
+		"errorMessage": task.ErrorMessage,
+		"startedAt":    task.StartedAt,
+		"completedAt":  task.CompletedAt,
+		"duration":     task.Duration.Milliseconds(),
+	}, nil
+}
+
+// GetTasksByDatabase 获取指定数据库的所有任务
+func (a *App) GetTasksByDatabase(databaseID string) ([]map[string]interface{}, error) {
+	if a.taskManager == nil {
+		return []map[string]interface{}{}, nil
+	}
+
+	tasks := a.taskManager.GetTasksByDatabase(databaseID)
+	var result []map[string]interface{}
+
+	for _, task := range tasks {
+		result = append(result, map[string]interface{}{
+			"id":           task.ID,
+			"tableName":    task.TableName,
+			"databaseId":   task.DatabaseID,
+			"status":       task.Status,
+			"progress":     task.Progress,
+			"errorMessage": task.ErrorMessage,
+			"startedAt":    task.StartedAt,
+			"completedAt":  task.CompletedAt,
+			"duration":     task.Duration.Milliseconds(),
+		})
+	}
+
+	return result, nil
+}
+
+// CancelTask 取消任务
+func (a *App) CancelTask(taskID string) error {
+	if a.taskManager == nil {
+		return fmt.Errorf("task manager not initialized")
+	}
+
+	return a.taskManager.CancelTask(taskID)
 }
 
 // SaveDatabaseConnection 保存数据库连接配置

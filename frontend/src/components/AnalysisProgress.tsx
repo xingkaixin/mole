@@ -14,6 +14,7 @@ export interface AnalysisTask {
 interface AnalysisProgressProps {
 	selectedTablesCount: number;
 	tasks: AnalysisTask[];
+	isLoading?: boolean;
 	onCancelTask?: (taskId: string) => void;
 	onCancelAll?: () => void;
 }
@@ -21,6 +22,7 @@ interface AnalysisProgressProps {
 export function AnalysisProgress({
 	selectedTablesCount,
 	tasks = [],
+	isLoading = false,
 	onCancelTask,
 	onCancelAll,
 }: AnalysisProgressProps) {
@@ -159,18 +161,28 @@ export function AnalysisProgress({
 									</div>
 
 									{/* 状态 */}
-									<div className="col-span-3 text-center">
-										<span className={`text-sm ${getStatusColor(task.status)}`}>
-											{getStatusText(task.status)}
-										</span>
-										{task.status === "running" && (
-											<div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mx-auto mt-1"></div>
-										)}
+									<div className="col-span-3">
+										<div className="flex items-center space-x-2">
+											<span className={`text-sm ${getStatusColor(task.status)}`}>
+												{getStatusText(task.status)}
+											</span>
+											{task.status === "running" && (
+												<div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+											)}
+										</div>
 									</div>
 
 									{/* 进度 */}
-									<div className="col-span-2 text-center">
-										<span className="text-sm">{task.progress}%</span>
+									<div className="col-span-2">
+										<div className="flex items-center space-x-2">
+											<span className="text-sm w-10 text-right">{task.progress}%</span>
+											<div className="flex-1 bg-gray-200 rounded-full h-2">
+												<div
+													className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+													style={{ width: `${task.progress}%` }}
+												/>
+											</div>
+										</div>
 									</div>
 
 									{/* 操作 */}
@@ -191,12 +203,24 @@ export function AnalysisProgress({
 						))}
 					</div>
 				</div>
-			) : (
+			) : isLoading ? (
 				<div className="text-center py-12">
 					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-					<p className="text-lg">正在分析 {selectedTablesCount} 个表...</p>
+					<p className="text-lg">正在加载任务状态...</p>
 					<p className="text-sm text-muted-foreground mt-2">
-						请稍候，这可能需要一些时间
+						请稍候
+					</p>
+				</div>
+			) : (
+				<div className="text-center py-12">
+					<div className="text-gray-400 mb-4">
+						<svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+						</svg>
+					</div>
+					<p className="text-lg text-gray-600">暂无分析任务</p>
+					<p className="text-sm text-muted-foreground mt-2">
+						请先选择表并启动分析任务
 					</p>
 				</div>
 			)}
