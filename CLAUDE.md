@@ -1,7 +1,7 @@
 ## 开发方式
 - 当技术资料不完整时，不要瞎猜，通过`context7`提供的资料回答，如果依然不确认，就说“抱歉，我无法回答这个问题。”
 - 任何时候都要拆解任务，创建To-do List，明确每个任务的目标和步骤。
-- 对于应用的测试，如果需要`make dev`，那么不要执行，告诉我，我会去执行并测试
+- 对于应用的测试，告诉我，我会去执行并测试
 
 ## About
 
@@ -41,9 +41,9 @@ This project utilizes a modern frontend stack:
 Use the following commands (from the `frontend` directory) to add new Shadcn UI components:
 
 ```sh
-npx shadcn@latest add button
-npx shadcn@latest add input
-npx shadcn@latest add card
+bunx --bun shadcn@latest add button
+bunx --bun shadcn@latest add input
+bunx --bun shadcn@latest add card
 # ...add any other supported component
 ```
 

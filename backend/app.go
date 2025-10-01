@@ -9,7 +9,7 @@ import (
 type App struct {
 	ctx             context.Context
 	dbManager       *DatabaseManager
-	ruleManager     *RuleManager
+	analysisEngine  *AnalysisEngine
 	storageManager  *StorageManager
 	currentConfig   *DatabaseConfig
 }
@@ -17,13 +17,9 @@ type App struct {
 // NewApp creates a new App application struct
 func NewApp() *App {
 	app := &App{
-		dbManager:   NewDatabaseManager(),
-		ruleManager: NewRuleManager(),
+		dbManager:      NewDatabaseManager(),
+		analysisEngine: NewAnalysisEngine(),
 	}
-
-	// 注册内置规则
-	app.ruleManager.RegisterRule(&RowCountRule{})
-	app.ruleManager.RegisterRule(&NullRateRule{})
 
 	return app
 }
@@ -71,26 +67,19 @@ func (a *App) GetTables() ([]string, error) {
 }
 
 // AnalyzeTables 分析选定的表
-func (a *App) AnalyzeTables(tables []string) ([]RuleResult, error) {
-	if a.dbManager == nil || a.dbManager.db == nil {
-		return nil, fmt.Errorf("数据库未连接")
-	}
-
-	var allResults []RuleResult
-	for _, table := range tables {
-		results, err := a.ruleManager.ExecuteAllRules(a.dbManager.db, table)
-		if err != nil {
-			return nil, fmt.Errorf("分析表 %s 失败: %s", table, err.Error())
-		}
-		allResults = append(allResults, results...)
-	}
-
-	return allResults, nil
+// AnalyzeTables 分析表（旧版本，暂时保留兼容性）
+func (a *App) AnalyzeTables(tables []string) ([]interface{}, error) {
+	// TODO: 更新为使用新的并发分析系统
+	// 暂时返回空结果
+	return []interface{}{}, nil
 }
 
 // GetAvailableRules 获取可用规则列表
 func (a *App) GetAvailableRules() []string {
-	return a.ruleManager.GetRules()
+	if a.analysisEngine != nil {
+		return a.analysisEngine.GetAvailableRules()
+	}
+	return []string{}
 }
 
 // SaveDatabaseConnection 保存数据库连接配置

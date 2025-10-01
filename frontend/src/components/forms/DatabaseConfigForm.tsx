@@ -135,6 +135,30 @@ export function DatabaseConfigForm({
 					</div>
 				</div>
 
+				{/* 并发度配置 */}
+				<div>
+					<label
+						htmlFor={`${idPrefix}-concurrency`}
+						className="text-sm font-medium"
+					>
+						并发度
+					</label>
+					<Input
+						id={`${idPrefix}-concurrency`}
+						type="number"
+						value={config.concurrency || 5}
+						onChange={(e) =>
+							onConfigChange("concurrency", parseInt(e.target.value, 10) || 5)
+						}
+						placeholder="5"
+						min="1"
+						max="20"
+					/>
+					<p className="text-xs text-muted-foreground mt-1">
+						同时分析表的数量，默认为5
+					</p>
+				</div>
+
 				{connectionStatus && (
 					<div
 						className={`p-3 rounded text-sm ${

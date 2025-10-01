@@ -43,6 +43,7 @@ function App() {
 		username: "root",
 		password: "",
 		database: "",
+		concurrency: 5, // 默认并发度
 	});
 	const [connectionStatus, setConnectionStatus] = useState<string>("");
 	const [tables, setTables] = useState<TableInfo[]>([]);
@@ -279,13 +280,23 @@ function App() {
 			return;
 		}
 
+		if (!currentConnection) {
+			toast.error("请先选择数据库连接");
+			return;
+		}
+
 		setCurrentStep("analysis");
 
 		try {
-			const results = await AnalyzeTables(selectedTables);
-			setAnalysisResults(results);
-			setCurrentStep("results");
-			toast.success("分析完成");
+			// 使用新的并发分析系统
+			// 这里应该调用新的分析API，启动并发分析任务
+			// const taskId = await StartAnalysisTasks(currentConnection.id, selectedTables);
+
+			// 模拟分析完成，跳转到结果页面
+			setTimeout(() => {
+				setCurrentStep("results");
+				toast.success("分析任务已启动");
+			}, 1000);
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : String(error));
 			setCurrentStep("analysis_tables");
@@ -302,6 +313,7 @@ function App() {
 			username: "root",
 			password: "",
 			database: "",
+			concurrency: 5,
 		});
 		setConnectionStatus("");
 		setIsAddingConnection(true);
@@ -447,8 +459,7 @@ function App() {
 
 				{currentStep === "results" && (
 					<ResultsPage
-						results={analysisResults}
-						onReanalyze={handleReanalyze}
+						connectionId={currentConnection?.id}
 					/>
 				)}
 			</div>

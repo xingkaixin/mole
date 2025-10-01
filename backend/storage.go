@@ -2,13 +2,28 @@ package backend
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
+
+// AnalysisResult 分析结果
+type AnalysisResult struct {
+	ID          string                 `json:"id"`
+	DatabaseID  string                 `json:"databaseId"`
+	TableName   string                 `json:"tableName"`
+	Rules       []string               `json:"rules"`
+	Results     map[string]interface{} `json:"results"`
+	Status      string                 `json:"status"`
+	StartedAt   time.Time              `json:"startedAt"`
+	CompletedAt *time.Time             `json:"completedAt,omitempty"`
+	Duration    time.Duration          `json:"duration"`
+}
 
 // StorageManager 存储管理器
 type StorageManager struct {
@@ -86,6 +101,7 @@ func createTables(db *sql.DB) error {
 		username TEXT NOT NULL,
 		password TEXT NOT NULL,
 		database TEXT NOT NULL,
+		concurrency INTEGER DEFAULT 5,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
@@ -100,6 +116,20 @@ func createTables(db *sql.DB) error {
 		UNIQUE(connection_id, table_name),
 		FOREIGN KEY (connection_id) REFERENCES database_connections(id) ON DELETE CASCADE
 	);
+
+	CREATE TABLE IF NOT EXISTS analysis_results (
+		id TEXT PRIMARY KEY,
+		connection_id TEXT NOT NULL,
+		table_name TEXT NOT NULL,
+		rules TEXT NOT NULL,
+		results TEXT NOT NULL,
+		status TEXT NOT NULL,
+		started_at DATETIME NOT NULL,
+		completed_at DATETIME,
+		duration INTEGER,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (connection_id) REFERENCES database_connections(id) ON DELETE CASCADE
+	);
 	`
 
 	_, err := db.Exec(createTableSQL)
@@ -110,8 +140,8 @@ func createTables(db *sql.DB) error {
 func (sm *StorageManager) SaveConnection(config DatabaseConfig) error {
 	query := `
 	INSERT OR REPLACE INTO database_connections
-	(id, name, type, host, port, username, password, database, updated_at)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+	(id, name, type, host, port, username, password, database, concurrency, updated_at)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 	`
 
 	_, err := sm.db.Exec(query,
@@ -123,6 +153,7 @@ func (sm *StorageManager) SaveConnection(config DatabaseConfig) error {
 		config.Username,
 		config.Password,
 		config.Database,
+		config.Concurrency,
 	)
 
 	return err
@@ -131,7 +162,7 @@ func (sm *StorageManager) SaveConnection(config DatabaseConfig) error {
 // GetConnections 获取所有数据库连接配置
 func (sm *StorageManager) GetConnections() ([]DatabaseConfig, error) {
 	query := `
-	SELECT id, name, type, host, port, username, password, database
+	SELECT id, name, type, host, port, username, password, database, concurrency
 	FROM database_connections
 	ORDER BY name
 	`
@@ -154,6 +185,7 @@ func (sm *StorageManager) GetConnections() ([]DatabaseConfig, error) {
 			&config.Username,
 			&config.Password,
 			&config.Database,
+			&config.Concurrency,
 		)
 		if err != nil {
 			return nil, err
@@ -228,6 +260,137 @@ func (sm *StorageManager) GetTableSelections(connectionID string) ([]string, err
 	}
 
 	return selectedTables, nil
+}
+
+// SaveAnalysisResult 保存分析结果
+func (sm *StorageManager) SaveAnalysisResult(result *AnalysisResult) error {
+	// 序列化规则和结果
+	rulesJSON, err := json.Marshal(result.Rules)
+	if err != nil {
+		return fmt.Errorf("failed to marshal rules: %w", err)
+	}
+
+	resultsJSON, err := json.Marshal(result.Results)
+	if err != nil {
+		return fmt.Errorf("failed to marshal results: %w", err)
+	}
+
+	query := `
+	INSERT INTO analysis_results
+	(id, connection_id, table_name, rules, results, status, started_at, completed_at, duration)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
+
+	_, err = sm.db.Exec(query,
+		result.ID,
+		result.DatabaseID,
+		result.TableName,
+		string(rulesJSON),
+		string(resultsJSON),
+		result.Status,
+		result.StartedAt,
+		result.CompletedAt,
+		int64(result.Duration.Seconds()),
+	)
+
+	return err
+}
+
+// GetAnalysisResults 获取分析结果
+func (sm *StorageManager) GetAnalysisResults(connectionID string) ([]*AnalysisResult, error) {
+	query := `
+	SELECT id, connection_id, table_name, rules, results, status, started_at, completed_at, duration
+	FROM analysis_results
+	WHERE connection_id = ?
+	ORDER BY started_at DESC
+	`
+
+	rows, err := sm.db.Query(query, connectionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []*AnalysisResult
+	for rows.Next() {
+		var result AnalysisResult
+		var rulesJSON, resultsJSON string
+		var durationSeconds int64
+
+		err := rows.Scan(
+			&result.ID,
+			&result.DatabaseID,
+			&result.TableName,
+			&rulesJSON,
+			&resultsJSON,
+			&result.Status,
+			&result.StartedAt,
+			&result.CompletedAt,
+			&durationSeconds,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// 反序列化规则和结果
+		if err := json.Unmarshal([]byte(rulesJSON), &result.Rules); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal rules: %w", err)
+		}
+		if err := json.Unmarshal([]byte(resultsJSON), &result.Results); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal results: %w", err)
+		}
+
+		result.Duration = time.Duration(durationSeconds) * time.Second
+		results = append(results, &result)
+	}
+
+	return results, nil
+}
+
+// GetAnalysisResult 获取单个分析结果
+func (sm *StorageManager) GetAnalysisResult(resultID string) (*AnalysisResult, error) {
+	query := `
+	SELECT id, connection_id, table_name, rules, results, status, started_at, completed_at, duration
+	FROM analysis_results
+	WHERE id = ?
+	`
+
+	var result AnalysisResult
+	var rulesJSON, resultsJSON string
+	var durationSeconds int64
+
+	err := sm.db.QueryRow(query, resultID).Scan(
+		&result.ID,
+		&result.DatabaseID,
+		&result.TableName,
+		&rulesJSON,
+		&resultsJSON,
+		&result.Status,
+		&result.StartedAt,
+		&result.CompletedAt,
+		&durationSeconds,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// 反序列化规则和结果
+	if err := json.Unmarshal([]byte(rulesJSON), &result.Rules); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal rules: %w", err)
+	}
+	if err := json.Unmarshal([]byte(resultsJSON), &result.Results); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal results: %w", err)
+	}
+
+	result.Duration = time.Duration(durationSeconds) * time.Second
+	return &result, nil
+}
+
+// DeleteAnalysisResult 删除分析结果
+func (sm *StorageManager) DeleteAnalysisResult(resultID string) error {
+	query := `DELETE FROM analysis_results WHERE id = ?`
+	_, err := sm.db.Exec(query, resultID)
+	return err
 }
 
 // Close 关闭存储管理器

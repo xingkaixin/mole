@@ -45,9 +45,9 @@ This project utilizes a modern frontend stack:
 Use the following commands (from the `frontend` directory) to add new Shadcn UI components:
 
 ```sh
-npx shadcn@latest add button
-npx shadcn@latest add input
-npx shadcn@latest add card
+bunx --bun shadcn@latest add button
+bunx --bun shadcn@latest add input
+bunx --bun shadcn@latest add card
 # ...add any other supported component
 ```
 

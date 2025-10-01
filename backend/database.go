@@ -9,14 +9,15 @@ import (
 
 // DatabaseConfig 数据库连接配置
 type DatabaseConfig struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Database string `json:"database"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Host        string `json:"host"`
+	Port        int    `json:"port"`
+	Username    string `json:"username"`
+	Password    string `json:"password"`
+	Database    string `json:"database"`
+	Concurrency int    `json:"concurrency"` // 并发度配置，默认5
 }
 
 // DatabaseManager 数据库管理器
