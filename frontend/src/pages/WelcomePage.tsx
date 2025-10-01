@@ -48,7 +48,7 @@ export function WelcomePage({
             </Button>
           </div>
 
-          {connections.length === 0 ? (
+          {!connections || connections.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
                 <Plus className="w-8 h-8 text-gray-400" />

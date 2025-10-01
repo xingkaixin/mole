@@ -9,6 +9,8 @@ import (
 
 // DatabaseConfig 数据库连接配置
 type DatabaseConfig struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
 	Type     string `json:"type"`
 	Host     string `json:"host"`
 	Port     int    `json:"port"`

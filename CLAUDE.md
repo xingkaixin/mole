@@ -1,6 +1,9 @@
 ## 准确性
 - 当技术资料不完整时，不要瞎猜，通过`context7`提供的资料回答，如果依然不确认，就说“抱歉，我无法回答这个问题。”
 
+## 测试
+对于应用的测试，如果需要`make dev`，那么不要执行，告诉我，我会去执行并测试
+
 ## About
 
 **A modern Wails desktop app** featuring a modern stack:

@@ -6,6 +6,9 @@ import {
   ConnectDatabase,
   GetTables,
   AnalyzeTables,
+  SaveDatabaseConnection,
+  GetDatabaseConnections,
+  DeleteDatabaseConnection,
 } from "../wailsjs/go/backend/App.js";
 import { Sidebar } from "@/components/Sidebar";
 import { WelcomePage } from "@/pages/WelcomePage";
@@ -20,6 +23,7 @@ function App() {
   const [connections, setConnections] = useState<DatabaseConfig[]>([]);
   const [currentConnection, setCurrentConnection] = useState<DatabaseConfig | null>(null);
   const [dbConfig, setDbConfig] = useState<DatabaseConfig>({
+    id: "",
     name: "",
     type: "mysql",
     host: "localhost",
@@ -34,18 +38,25 @@ function App() {
   const [analysisResults, setAnalysisResults] = useState<RuleResult[]>([]);
   const [isAddingConnection, setIsAddingConnection] = useState(false);
 
-  // 从localStorage加载保存的连接
+  // 从后端存储加载保存的连接
   useEffect(() => {
-    const savedConnections = localStorage.getItem("mole-db-connections");
-    if (savedConnections) {
-      setConnections(JSON.parse(savedConnections));
-    }
+    const loadConnections = async () => {
+      try {
+        const savedConnections = await GetDatabaseConnections();
+        setConnections(savedConnections || []);
+      } catch (error) {
+        console.error("Failed to load connections:", error);
+        setConnections([]);
+      }
+    };
+    loadConnections();
   }, []);
 
-  // 保存连接到localStorage
-  const saveConnections = (newConnections: DatabaseConfig[]) => {
+  // 保存连接到后端存储
+  const saveConnections = async (newConnections: DatabaseConfig[]) => {
     setConnections(newConnections);
-    localStorage.setItem("mole-db-connections", JSON.stringify(newConnections));
+    // 注意：这里我们不再需要手动保存到localStorage
+    // 每个连接在创建时已经通过SaveDatabaseConnection保存到后端
   };
 
   const updateConfig = (field: keyof DatabaseConfig, value: string | number) => {
@@ -80,6 +91,10 @@ function App() {
         id: Date.now().toString()
       };
 
+      // 保存到后端存储
+      await SaveDatabaseConnection(newConnection);
+
+      // 更新本地状态
       const newConnections = [...connections, newConnection];
       saveConnections(newConnections);
 
@@ -139,6 +154,7 @@ function App() {
 
   const handleAddConnection = () => {
     setDbConfig({
+      id: "",
       name: "",
       type: "mysql",
       host: "localhost",
@@ -159,10 +175,16 @@ function App() {
     setCurrentStep("config");
   };
 
-  const handleDeleteConnection = (connectionId: string) => {
-    const newConnections = connections.filter(conn => conn.id !== connectionId);
-    saveConnections(newConnections);
-    toast.success("连接已删除");
+  const handleDeleteConnection = async (connectionId: string) => {
+    try {
+      await DeleteDatabaseConnection(connectionId);
+      const newConnections = connections.filter(conn => conn.id !== connectionId);
+      saveConnections(newConnections);
+      toast.success("连接已删除");
+    } catch (error) {
+      toast.error("删除连接失败");
+      console.error("Failed to delete connection:", error);
+    }
   };
 
   const handleSelectConnection = (connection: DatabaseConfig) => {

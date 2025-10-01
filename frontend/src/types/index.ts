@@ -1,5 +1,5 @@
 export interface DatabaseConfig {
-  id?: string;
+  id: string;
   name: string;
   type: string;
   host: string;
