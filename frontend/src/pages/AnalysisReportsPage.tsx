@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { toast } from "sonner";
 import { Trash2, Search, FileText, Calendar, Database, Clock, CheckCircle, XCircle, Loader2, Filter, ChevronDown } from "lucide-react";
 import type { AnalysisResult } from "@/types";
+import { AnalysisResultViewer } from "@/components/AnalysisResultViewer";
 
 interface AnalysisReportsPageProps {
 	onBack: () => void;
@@ -176,87 +177,10 @@ export function AnalysisReportsPage({
 
 	if (selectedResult) {
 		return (
-			<Card className="p-6 max-w-6xl mx-auto">
-				<div className="flex justify-between items-center mb-6">
-					<h2 className="text-2xl font-bold">分析结果详情</h2>
-					<div className="flex gap-2">
-						<Button variant="outline" onClick={() => setSelectedResult(null)}>
-							返回列表
-						</Button>
-						<Button variant="outline" onClick={onBack}>
-							返回主页
-						</Button>
-					</div>
-				</div>
-
-				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-					<div className="space-y-4">
-						<div className="flex items-center gap-2">
-							<Database className="w-4 h-4 text-gray-500" />
-							<span className="font-medium">表名：</span>
-							<span>{selectedResult.tableName}</span>
-						</div>
-						{selectedResult.databaseName && (
-							<div className="flex items-center gap-2">
-								<Database className="w-4 h-4 text-gray-500" />
-								<span className="font-medium">数据库连接：</span>
-								<span>{selectedResult.databaseName}</span>
-							</div>
-						)}
-						<div className="flex items-center gap-2">
-							<FileText className="w-4 h-4 text-gray-500" />
-							<span className="font-medium">分析规则：</span>
-							<div className="flex gap-1">
-								{selectedResult.rules.map(rule => (
-									<Badge key={rule} variant="secondary">{rule}</Badge>
-								))}
-							</div>
-						</div>
-						<div className="flex items-center gap-2">
-							<Calendar className="w-4 h-4 text-gray-500" />
-							<span className="font-medium">开始时间：</span>
-							<span>{formatDate(selectedResult.startedAt)}</span>
-						</div>
-					</div>
-
-					<div className="space-y-4">
-						<div className="flex items-center gap-2">
-							<div className={getStatusColor(selectedResult.status)}>
-								{getStatusIcon(selectedResult.status)}
-								<span className="ml-1">
-									{selectedResult.status === "completed" ? "已完成" :
-									 selectedResult.status === "running" ? "运行中" :
-									 selectedResult.status === "failed" ? "失败" :
-									 selectedResult.status === "cancelled" ? "已取消" : "等待中"}
-								</span>
-							</div>
-						</div>
-						{selectedResult.completedAt && (
-							<div className="flex items-center gap-2">
-								<Calendar className="w-4 h-4 text-gray-500" />
-								<span className="font-medium">完成时间：</span>
-								<span>{formatDate(selectedResult.completedAt)}</span>
-							</div>
-						)}
-						<div className="flex items-center gap-2">
-							<Clock className="w-4 h-4 text-gray-500" />
-							<span className="font-medium">持续时间：</span>
-							<span>{formatDuration(selectedResult.duration)}</span>
-						</div>
-					</div>
-				</div>
-
-				<div className="border rounded-lg">
-					<div className="bg-gray-50 px-4 py-2 border-b">
-						<h3 className="font-medium">分析结果数据</h3>
-					</div>
-					<div className="p-4">
-						<pre className="bg-gray-900 text-gray-100 p-4 rounded overflow-auto max-h-96 text-sm">
-							{JSON.stringify(selectedResult.results, null, 2)}
-						</pre>
-					</div>
-				</div>
-			</Card>
+			<AnalysisResultViewer
+				result={selectedResult}
+				onBack={() => setSelectedResult(null)}
+			/>
 		);
 	}
 

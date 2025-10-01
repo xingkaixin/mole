@@ -1,4 +1,4 @@
-import { BarChart3, Database, Home, Plus } from "lucide-react";
+import { BarChart3, Home, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SidebarProps {
@@ -43,15 +43,6 @@ export function Sidebar({ onAddConnection, onGoHome, onGoToReports }: SidebarPro
 				<Plus className="w-5 h-5" />
 			</Button>
 
-			{/* Database Icon (Placeholder for future features) */}
-			<Button
-				variant="ghost"
-				size="icon"
-				className="w-12 h-12 rounded-lg hover:bg-gray-50 transition-colors"
-				title="数据库管理"
-			>
-				<Database className="w-5 h-5" />
-			</Button>
-		</div>
+			</div>
 	);
 }
