@@ -89,6 +89,17 @@ func createTables(db *sql.DB) error {
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
+
+	CREATE TABLE IF NOT EXISTS table_selections (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		connection_id TEXT NOT NULL,
+		table_name TEXT NOT NULL,
+		selected BOOLEAN NOT NULL DEFAULT 0,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		UNIQUE(connection_id, table_name),
+		FOREIGN KEY (connection_id) REFERENCES database_connections(id) ON DELETE CASCADE
+	);
 	`
 
 	_, err := db.Exec(createTableSQL)
@@ -158,6 +169,65 @@ func (sm *StorageManager) DeleteConnection(id string) error {
 	query := `DELETE FROM database_connections WHERE id = ?`
 	_, err := sm.db.Exec(query, id)
 	return err
+}
+
+// SaveTableSelections 保存表选择状态
+func (sm *StorageManager) SaveTableSelections(connectionID string, tableNames []string) error {
+	// 使用事务确保数据一致性
+	tx, err := sm.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 删除该连接的所有现有选择状态
+	deleteQuery := `DELETE FROM table_selections WHERE connection_id = ?`
+	_, err = tx.Exec(deleteQuery, connectionID)
+	if err != nil {
+		return err
+	}
+
+	// 插入新的选择状态
+	insertQuery := `
+		INSERT INTO table_selections (connection_id, table_name, selected)
+		VALUES (?, ?, 1)
+	`
+	for _, tableName := range tableNames {
+		_, err = tx.Exec(insertQuery, connectionID, tableName)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// GetTableSelections 获取表选择状态
+func (sm *StorageManager) GetTableSelections(connectionID string) ([]string, error) {
+	query := `
+		SELECT table_name
+		FROM table_selections
+		WHERE connection_id = ? AND selected = 1
+		ORDER BY table_name
+	`
+
+	rows, err := sm.db.Query(query, connectionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var selectedTables []string
+	for rows.Next() {
+		var tableName string
+		err := rows.Scan(&tableName)
+		if err != nil {
+			return nil, err
+		}
+		selectedTables = append(selectedTables, tableName)
+	}
+
+	return selectedTables, nil
 }
 
 // Close 关闭存储管理器

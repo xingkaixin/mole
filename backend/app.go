@@ -117,6 +117,30 @@ func (a *App) DeleteDatabaseConnection(id string) error {
 	return a.storageManager.DeleteConnection(id)
 }
 
+// SaveTableSelections 保存表选择状态
+func (a *App) SaveTableSelections(tableNames []string) error {
+	if a.storageManager == nil {
+		return fmt.Errorf("storage manager not initialized")
+	}
+	if a.currentConfig == nil {
+		return fmt.Errorf("no active database connection")
+	}
+
+	return a.storageManager.SaveTableSelections(a.currentConfig.ID, tableNames)
+}
+
+// GetTableSelections 获取表选择状态
+func (a *App) GetTableSelections() ([]string, error) {
+	if a.storageManager == nil {
+		return []string{}, nil
+	}
+	if a.currentConfig == nil {
+		return []string{}, nil
+	}
+
+	return a.storageManager.GetTableSelections(a.currentConfig.ID)
+}
+
 // Greet returns a greeting for the given name
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)

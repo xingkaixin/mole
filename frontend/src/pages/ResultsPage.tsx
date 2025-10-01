@@ -3,17 +3,17 @@ import { ResultsTable } from "@/components/ResultsTable";
 import type { RuleResult } from "@/types";
 
 interface ResultsPageProps {
-  results: RuleResult[];
-  onReanalyze: () => void;
+	results: RuleResult[];
+	onReanalyze: () => void;
 }
 
 export function ResultsPage({ results, onReanalyze }: ResultsPageProps) {
-  return (
-    <div>
-      <div className="flex justify-end mb-4">
-        <ModeToggle />
-      </div>
-      <ResultsTable results={results} onReanalyze={onReanalyze} />
-    </div>
-  );
+	return (
+		<div>
+			<div className="flex justify-end mb-4">
+				<ModeToggle />
+			</div>
+			<ResultsTable results={results} onReanalyze={onReanalyze} />
+		</div>
+	);
 }
