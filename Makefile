@@ -1,4 +1,4 @@
-.PHONY: dev build-windows build-mac clean deps help
+.PHONY: dev build-windows build-mac clean deps lint format check help
 
 # Run the application in development mode
 dev:
@@ -22,6 +22,17 @@ clean:
 deps:
 	cd frontend && bun install
 
+# Lint frontend code
+lint:
+	cd frontend && bun run lint
+
+# Format frontend code
+format:
+	cd frontend && bun run format
+
+# Check frontend code
+check:
+	cd frontend && bun run check
 
 # Help command to show available targets
 help:
@@ -31,3 +42,6 @@ help:
 	@echo "  make build-linux   - Build the application for Linux (64-bit)"
 	@echo "  make build-mac     - Build the application for macOS (universal)"
 	@echo "  make clean         - Clean build artifacts"
+	@echo "  make lint          - Lint frontend code"
+	@echo "  make format        - Format frontend code"
+	@echo "  make check         - Check and apply fixes to frontend code"
