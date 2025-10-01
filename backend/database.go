@@ -181,6 +181,11 @@ func (dm *DatabaseManager) GetTablesMetadata(tableNames []string) (map[string]ma
 	return result, nil
 }
 
+// GetDB 获取数据库连接
+func (dm *DatabaseManager) GetDB() *sql.DB {
+	return dm.db
+}
+
 // Close 关闭连接
 func (dm *DatabaseManager) Close() error {
 	if dm.db != nil {

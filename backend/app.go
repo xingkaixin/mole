@@ -81,33 +81,68 @@ func (a *App) StartAnalysisTasks(connectionID string, tables []string) (string, 
 		return "", fmt.Errorf("no active database connection")
 	}
 
+	if a.dbManager == nil {
+		return "", fmt.Errorf("database manager not initialized")
+	}
+
+	db := a.dbManager.GetDB()
+	if db == nil {
+		return "", fmt.Errorf("database connection not established")
+	}
+
 	// 创建任务ID
 	taskID := fmt.Sprintf("analysis_%s_%d", connectionID, time.Now().Unix())
 
-	// 这里应该创建真正的分析任务
-	// 暂时模拟任务创建并保存结果
-	fmt.Printf("Starting analysis tasks for connection %s, tables: %v\n", connectionID, tables)
+	// 获取可用的分析规则
+	var ruleNames []string
+	if a.analysisEngine != nil {
+		ruleNames = a.analysisEngine.GetAvailableRules()
+	}
 
-	// 模拟保存分析结果
+	if len(ruleNames) == 0 {
+		return "", fmt.Errorf("no analysis rules available")
+	}
+
+	fmt.Printf("Starting real analysis tasks for connection %s, tables: %v, rules: %v\n", connectionID, tables, ruleNames)
+
+	// 对每个表执行真正的分析
 	for _, tableName := range tables {
 		resultID := fmt.Sprintf("result_%s_%s", tableName, time.Now().Format("20060102150405"))
 		startedAt := time.Now()
-		completedAt := startedAt.Add(2 * time.Second)
+
+		// 使用分析引擎执行真正的分析
+		analysisResults, err := a.analysisEngine.ExecuteAnalysis(db, tableName, a.currentConfig, ruleNames)
+		if err != nil {
+			fmt.Printf("Failed to analyze table %s: %v\n", tableName, err)
+
+			// 创建失败的结果
+			result := &AnalysisResult{
+				ID:          resultID,
+				DatabaseID:  connectionID,
+				TableName:   tableName,
+				Rules:       ruleNames,
+				Results:     map[string]interface{}{"error": err.Error()},
+				Status:      "failed",
+				StartedAt:   startedAt,
+				Duration:    time.Since(startedAt),
+			}
+
+			if a.storageManager != nil {
+				a.storageManager.SaveAnalysisResult(result)
+			}
+			continue
+		}
+
+		completedAt := time.Now()
 		duration := completedAt.Sub(startedAt)
 
+		// 创建成功的结果
 		result := &AnalysisResult{
 			ID:          resultID,
 			DatabaseID:  connectionID,
 			TableName:   tableName,
-			Rules:       []string{"row_count", "non_null_rate"},
-			Results: map[string]interface{}{
-				"row_count": 1000 + len(tableName)*10,
-				"non_null_rate": map[string]float64{
-					"id":    1.0,
-					"name":  0.95,
-					"email": 0.90,
-				},
-			},
+			Rules:       ruleNames,
+			Results:     analysisResults,
 			Status:      "completed",
 			StartedAt:   startedAt,
 			CompletedAt: &completedAt,
@@ -117,6 +152,8 @@ func (a *App) StartAnalysisTasks(connectionID string, tables []string) (string, 
 		if a.storageManager != nil {
 			a.storageManager.SaveAnalysisResult(result)
 		}
+
+		fmt.Printf("Completed analysis for table %s in %v\n", tableName, duration)
 	}
 
 	return taskID, nil
