@@ -6,7 +6,6 @@ import {
   ConnectDatabase,
   GetTables,
   AnalyzeTables,
-  GetAvailableRules
 } from "../wailsjs/go/backend/App.js";
 import { Sidebar } from "@/components/Sidebar";
 import { WelcomePage } from "@/pages/WelcomePage";
@@ -14,7 +13,7 @@ import { ConfigPage } from "@/pages/ConfigPage";
 import { TablesPage } from "@/pages/TablesPage";
 import { AnalysisPage } from "@/pages/AnalysisPage";
 import { ResultsPage } from "@/pages/ResultsPage";
-import { DatabaseConfig, RuleResult, AppStep } from "@/types";
+import type { DatabaseConfig, RuleResult, AppStep } from "@/types";
 
 function App() {
   const [currentStep, setCurrentStep] = useState<AppStep>("welcome");
@@ -61,8 +60,8 @@ function App() {
       const result = await TestDatabaseConnection(dbConfig);
       setConnectionStatus(result);
       toast.success("连接测试成功");
-    } catch (error: any) {
-      setConnectionStatus(error.message);
+    } catch (error) {
+      setConnectionStatus(error instanceof Error ? error.message : String(error));
       toast.error("连接测试失败");
     }
   };
@@ -91,7 +90,7 @@ function App() {
       await connectAndGetTables(newConnection);
 
       toast.success("连接保存成功");
-    } catch (error: any) {
+    } catch (_error) {
       toast.error("连接测试失败，请检查配置");
     }
   };
@@ -106,8 +105,8 @@ function App() {
       setTables(tableList);
       setCurrentStep("tables");
       toast.success("连接成功，已获取表清单");
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -132,8 +131,8 @@ function App() {
       setAnalysisResults(results);
       setCurrentStep("results");
       toast.success("分析完成");
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
       setCurrentStep("tables");
     }
   };
@@ -189,7 +188,7 @@ function App() {
   };
 
   return (
-    <div id="App" className="h-screen flex bg-white">
+    <div className="h-screen flex bg-white">
       <Toaster />
 
       {/* 左侧功能栏 */}

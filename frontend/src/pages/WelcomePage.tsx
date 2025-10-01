@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DatabaseConfig } from "@/types";
+import type { DatabaseConfig } from "@/types";
 
 interface WelcomePageProps {
   connections: DatabaseConfig[];
@@ -104,7 +104,9 @@ export function WelcomePage({
                           onClick={(e) => {
                             e.stopPropagation();
                             if (confirm("确定要删除这个连接吗？")) {
-                              onDeleteConnection(connection.id!);
+                              if (connection.id) {
+                                onDeleteConnection(connection.id);
+                              }
                             }
                           }}
                           className="text-red-600"

@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { RuleResult } from "@/types";
+import type { RuleResult } from "@/types";
 
 interface ResultsTableProps {
   results: RuleResult[];
@@ -29,8 +29,8 @@ export function ResultsTable({ results, onReanalyze }: ResultsTableProps) {
             </tr>
           </thead>
           <tbody>
-            {results.map((result, index) => (
-              <tr key={index} className="border-b hover:bg-gray-50">
+            {results.map((result) => (
+              <tr key={`${result.table}-${result.column || 'none'}-${result.ruleName}`} className="border-b hover:bg-gray-50">
                 <td className="p-3">{result.table}</td>
                 <td className="p-3">{result.column || "-"}</td>
                 <td className="p-3">

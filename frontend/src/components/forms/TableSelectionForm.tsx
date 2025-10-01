@@ -31,9 +31,10 @@ export function TableSelectionForm({
         </p>
         <div className="grid grid-cols-3 gap-2 max-h-96 overflow-y-auto">
           {tables.map(table => (
-            <div
+            <button
               key={table}
-              className={`p-3 border rounded cursor-pointer transition-colors ${
+              type="button"
+              className={`p-3 border rounded transition-colors ${
                 selectedTables.includes(table)
                   ? "bg-blue-100 border-blue-500"
                   : "hover:bg-gray-50"
@@ -49,7 +50,7 @@ export function TableSelectionForm({
                 />
                 <span className="text-sm">{table}</span>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>

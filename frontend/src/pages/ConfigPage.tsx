@@ -1,5 +1,5 @@
 import { DatabaseConfigForm } from "@/components/forms/DatabaseConfigForm";
-import { DatabaseConfig } from "@/types";
+import type { DatabaseConfig } from "@/types";
 
 interface ConfigPageProps {
   config: DatabaseConfig;

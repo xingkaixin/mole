@@ -1,6 +1,6 @@
 import { ModeToggle } from "@/components/mode-toggle";
 import { ResultsTable } from "@/components/ResultsTable";
-import { RuleResult } from "@/types";
+import type { RuleResult } from "@/types";
 
 interface ResultsPageProps {
   results: RuleResult[];

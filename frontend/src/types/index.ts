@@ -13,7 +13,7 @@ export interface RuleResult {
   ruleName: string;
   table: string;
   column?: string;
-  value: any;
+  value: unknown;
   status: string;
 }
 
