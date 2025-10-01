@@ -9,9 +9,10 @@ import type { AnalysisResult } from "@/types";
 
 interface ResultsPageProps {
 	connectionId?: string;
+	onGetAnalysisResults: (connectionId: string) => Promise<any[]>;
 }
 
-export function ResultsPage({ connectionId }: ResultsPageProps) {
+export function ResultsPage({ connectionId, onGetAnalysisResults }: ResultsPageProps) {
 	const [results, setResults] = useState<AnalysisResult[]>([]);
 	const [filteredResults, setFilteredResults] = useState<AnalysisResult[]>([]);
 	const [searchTerm, setSearchTerm] = useState("");
@@ -37,53 +38,30 @@ export function ResultsPage({ connectionId }: ResultsPageProps) {
 	const fetchResults = async () => {
 		setLoading(true);
 		try {
-			// 这里应该调用后端API获取分析结果
-			// const response = await fetch(`/api/analysis/results?connectionId=${connectionId}`);
-			// const data = await response.json();
-			// setResults(data);
-
-			// 模拟数据
-			setTimeout(() => {
-				setResults([
-					{
-						id: "1",
-						databaseId: connectionId || "",
-						tableName: "users",
-						rules: ["row_count", "non_null_rate"],
-						results: {
-							row_count: 1000,
-							non_null_rate: {
-								"id": 1.0,
-								"name": 0.95,
-								"email": 0.90
-							}
-						},
-						status: "completed",
-						startedAt: new Date(Date.now() - 3600000),
-						completedAt: new Date(Date.now() - 3000000),
-						duration: 600000
-					},
-					{
-						id: "2",
-						databaseId: connectionId || "",
-						tableName: "orders",
-						rules: ["row_count", "non_null_rate"],
-						results: {
-							row_count: 5000,
-							non_null_rate: {
-								"id": 1.0,
-								"user_id": 0.99,
-								"amount": 0.98
-							}
-						},
-						status: "completed",
-						startedAt: new Date(Date.now() - 7200000),
-						completedAt: new Date(Date.now() - 6600000),
-						duration: 600000
-					}
-				]);
+			if (!connectionId) {
+				setResults([]);
 				setLoading(false);
-			}, 1000);
+				return;
+			}
+
+			// 调用后端API获取真实的分析结果
+			const backendResults = await onGetAnalysisResults(connectionId);
+
+			// 转换后端格式为前端格式
+			const convertedResults: AnalysisResult[] = backendResults.map((result: any) => ({
+				id: result.id,
+				databaseId: result.databaseId,
+				tableName: result.tableName,
+				rules: result.rules,
+				results: result.results,
+				status: result.status,
+				startedAt: new Date(result.startedAt),
+				completedAt: result.completedAt ? new Date(result.completedAt) : undefined,
+				duration: result.duration
+			}));
+
+			setResults(convertedResults);
+			setLoading(false);
 		} catch (error) {
 			console.error("Failed to fetch analysis results:", error);
 			setLoading(false);

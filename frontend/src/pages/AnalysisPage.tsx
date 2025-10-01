@@ -5,31 +5,24 @@ import type { AnalysisTask } from "@/components/AnalysisProgress";
 
 interface AnalysisPageProps {
 	selectedTablesCount: number;
+	selectedTables: string[];
 }
 
-export function AnalysisPage({ selectedTablesCount }: AnalysisPageProps) {
+export function AnalysisPage({ selectedTablesCount, selectedTables }: AnalysisPageProps) {
 	const [tasks, setTasks] = useState<AnalysisTask[]>([]);
 
-	// 模拟任务数据
+	// 基于实际选择的表创建任务
 	useEffect(() => {
 		// 这里应该从后端获取实时任务状态
-		// 暂时使用模拟数据
-		const mockTasks: AnalysisTask[] = [
-			{
-				id: "1",
-				tableName: "users",
-				status: "running",
-				progress: 50,
-			},
-			{
-				id: "2",
-				tableName: "orders",
-				status: "pending",
-				progress: 0,
-			},
-		];
-		setTasks(mockTasks);
-	}, []);
+		// 暂时基于选择的表创建任务
+		const analysisTasks: AnalysisTask[] = selectedTables.map((tableName, index) => ({
+			id: (index + 1).toString(),
+			tableName: tableName,
+			status: index === 0 ? "running" : "pending", // 第一个任务运行中，其他等待
+			progress: index === 0 ? 50 : 0,
+		}));
+		setTasks(analysisTasks);
+	}, [selectedTables]);
 
 	const handleCancelTask = (taskId: string) => {
 		// 取消单个任务

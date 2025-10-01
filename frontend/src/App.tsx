@@ -19,6 +19,7 @@ import {
 	AnalyzeTables,
 	ConnectDatabase,
 	DeleteDatabaseConnection,
+	GetAnalysisResults,
 	GetDatabaseConnections,
 	GetTableSelections,
 	GetTables,
@@ -26,6 +27,7 @@ import {
 	SaveDatabaseConnection,
 	SaveTableSelections,
 	TestDatabaseConnection,
+	StartAnalysisTasks,
 } from "../wailsjs/go/backend/App.js";
 
 function App() {
@@ -289,14 +291,14 @@ function App() {
 
 		try {
 			// 使用新的并发分析系统
-			// 这里应该调用新的分析API，启动并发分析任务
-			// const taskId = await StartAnalysisTasks(currentConnection.id, selectedTables);
+			const taskId = await StartAnalysisTasks(currentConnection.id, selectedTables);
+			console.log("Analysis task started:", taskId);
 
 			// 模拟分析完成，跳转到结果页面
 			setTimeout(() => {
 				setCurrentStep("results");
-				toast.success("分析任务已启动");
-			}, 1000);
+				toast.success("分析任务已完成");
+			}, 3000);
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : String(error));
 			setCurrentStep("analysis_tables");
@@ -454,12 +456,16 @@ function App() {
 				)}
 
 				{currentStep === "analysis" && (
-					<AnalysisPage selectedTablesCount={selectedTables.length} />
+					<AnalysisPage
+						selectedTablesCount={selectedTables.length}
+						selectedTables={selectedTables}
+					/>
 				)}
 
 				{currentStep === "results" && (
 					<ResultsPage
 						connectionId={currentConnection?.id}
+						onGetAnalysisResults={GetAnalysisResults}
 					/>
 				)}
 			</div>
