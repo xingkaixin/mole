@@ -160,7 +160,7 @@ export function TableSelectionForm({
 					onClick={onStartAnalysis}
 					disabled={selectedTables.length === 0}
 				>
-					开始分析
+					确认添加
 				</Button>
 			</div>
 		</Card>

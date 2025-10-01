@@ -5,25 +5,25 @@ interface TableInfo {
 	exists: boolean;
 }
 
-interface TablesPageProps {
+interface TableSelectionPageProps {
 	tables: TableInfo[];
 	selectedTables: string[];
 	onTableToggle: (table: string) => void;
 	onSelectAll: () => void;
 	onDeselectAll: () => void;
 	onBack: () => void;
-	onStartAnalysis: () => void;
+	onConfirmSelection: () => void;
 }
 
-export function TablesPage({
+export function TableSelectionPage({
 	tables,
 	selectedTables,
 	onTableToggle,
 	onSelectAll,
 	onDeselectAll,
 	onBack,
-	onStartAnalysis,
-}: TablesPageProps) {
+	onConfirmSelection,
+}: TableSelectionPageProps) {
 	return (
 		<div>
 			<TableSelectionForm
@@ -33,7 +33,7 @@ export function TablesPage({
 				onSelectAll={onSelectAll}
 				onDeselectAll={onDeselectAll}
 				onBack={onBack}
-				onStartAnalysis={onStartAnalysis}
+				onStartAnalysis={onConfirmSelection}
 			/>
 		</div>
 	);

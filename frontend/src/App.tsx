@@ -3,9 +3,10 @@ import { toast } from "sonner";
 import { Sidebar } from "@/components/Sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { AnalysisPage } from "@/pages/AnalysisPage";
+import { AnalysisTablesPage } from "@/pages/AnalysisTablesPage";
 import { ConfigPage } from "@/pages/ConfigPage";
 import { ResultsPage } from "@/pages/ResultsPage";
-import { TablesPage } from "@/pages/TablesPage";
+import { TableSelectionPage } from "@/pages/TablesPage";
 import { WelcomePage } from "@/pages/WelcomePage";
 import type { AppStep, DatabaseConfig, RuleResult, TableInfo } from "@/types";
 import {
@@ -15,6 +16,7 @@ import {
 	GetDatabaseConnections,
 	GetTableSelections,
 	GetTables,
+	GetTablesMetadata,
 	SaveDatabaseConnection,
 	SaveTableSelections,
 	TestDatabaseConnection,
@@ -22,6 +24,7 @@ import {
 
 function App() {
 	const [currentStep, setCurrentStep] = useState<AppStep>("welcome");
+	const [previousStep, setPreviousStep] = useState<AppStep | null>(null);
 	const [connections, setConnections] = useState<DatabaseConfig[]>([]);
 	const [currentConnection, setCurrentConnection] =
 		useState<DatabaseConfig | null>(null);
@@ -38,6 +41,7 @@ function App() {
 	const [connectionStatus, setConnectionStatus] = useState<string>("");
 	const [tables, setTables] = useState<TableInfo[]>([]);
 	const [selectedTables, setSelectedTables] = useState<string[]>([]);
+	const [tempSelectedTables, setTempSelectedTables] = useState<string[]>([]);
 	const [analysisResults, setAnalysisResults] = useState<RuleResult[]>([]);
 	const [isAddingConnection, setIsAddingConnection] = useState(false);
 
@@ -175,7 +179,7 @@ function App() {
 				setSelectedTables([]);
 			}
 
-			setCurrentStep("tables");
+			setCurrentStep("analysis_tables");
 			toast.success("连接成功，已获取表清单");
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : String(error));
@@ -195,6 +199,15 @@ function App() {
 		} catch (error) {
 			console.warn("Failed to save table selections:", error);
 		}
+	};
+
+	// 临时表选择切换 - 只在表选择页面使用，不立即保存
+	const toggleTempTableSelection = (table: string) => {
+		const newTempSelectedTables = tempSelectedTables.includes(table)
+			? tempSelectedTables.filter((t) => t !== table)
+			: [...tempSelectedTables, table];
+
+		setTempSelectedTables(newTempSelectedTables);
 	};
 
 	const handleSelectAll = async () => {
@@ -221,6 +234,36 @@ function App() {
 			await SaveTableSelections([]);
 		} catch (error) {
 			console.warn("Failed to save table selections:", error);
+		}
+	};
+
+	// 临时批量选择 - 只在表选择页面使用
+	const handleTempSelectAll = () => {
+		// 只选择存在的表
+		const existingTables = tables
+			.filter((table) => table.exists)
+			.map((table) => table.name);
+
+		setTempSelectedTables(existingTables);
+	};
+
+	const handleTempDeselectAll = () => {
+		setTempSelectedTables([]);
+	};
+
+	// 加载表元数据
+	const handleLoadMetadata = async (tableNames: string[]) => {
+		try {
+			const metadata = await GetTablesMetadata(tableNames);
+			return metadata;
+		} catch (error) {
+			console.error("Failed to load table metadata:", error);
+			// 返回空的元数据对象
+			const emptyMetadata: Record<string, any> = {};
+			tableNames.forEach(tableName => {
+				emptyMetadata[tableName] = { error: "Failed to load metadata" };
+			});
+			return emptyMetadata;
 		}
 	};
 
@@ -303,13 +346,34 @@ function App() {
 		if (isAddingConnection) {
 			setCurrentStep("welcome");
 			setIsAddingConnection(false);
+		} else if (previousStep) {
+			setCurrentStep(previousStep);
+			setPreviousStep(null);
 		} else {
 			setCurrentStep("welcome");
 		}
 	};
 
+	const handleAddTables = () => {
+		setPreviousStep(currentStep);
+		setTempSelectedTables([...selectedTables]); // 进入时加载当前已选表作为临时状态
+		setCurrentStep("table_selection");
+	};
+
+	const handleConfirmSelection = async () => {
+		// 只在确认时保存选择状态到数据库
+		setSelectedTables(tempSelectedTables);
+		try {
+			await SaveTableSelections(tempSelectedTables);
+		} catch (error) {
+			console.warn("Failed to save table selections:", error);
+		}
+		setCurrentStep("analysis_tables");
+		setPreviousStep(null);
+	};
+
 	const handleReanalyze = () => {
-		setCurrentStep("tables");
+		setCurrentStep("analysis_tables");
 	};
 
 	const handleGoHome = () => {
@@ -348,15 +412,26 @@ function App() {
 					/>
 				)}
 
-				{currentStep === "tables" && (
-					<TablesPage
-						tables={tables}
+				{currentStep === "analysis_tables" && (
+					<AnalysisTablesPage
 						selectedTables={selectedTables}
-						onTableToggle={toggleTableSelection}
-						onSelectAll={handleSelectAll}
-						onDeselectAll={handleDeselectAll}
-						onBack={handleBack}
+						onRemoveTable={toggleTableSelection}
+						onAddTables={handleAddTables}
 						onStartAnalysis={startAnalysis}
+						onBack={handleBack}
+						onLoadMetadata={handleLoadMetadata}
+					/>
+				)}
+
+				{currentStep === "table_selection" && (
+					<TableSelectionPage
+						tables={tables}
+						selectedTables={tempSelectedTables}
+						onTableToggle={toggleTempTableSelection}
+						onSelectAll={handleTempSelectAll}
+						onDeselectAll={handleTempDeselectAll}
+						onBack={handleBack}
+						onConfirmSelection={handleConfirmSelection}
 					/>
 				)}
 

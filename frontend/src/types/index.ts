@@ -17,9 +17,17 @@ export interface RuleResult {
 	status: string;
 }
 
-export type AppStep = "welcome" | "config" | "tables" | "analysis" | "results";
+export type AppStep = "welcome" | "config" | "analysis_tables" | "table_selection" | "analysis" | "results";
 
 export interface TableInfo {
 	name: string;
 	exists: boolean;
+}
+
+export interface TableMetadata {
+	row_count?: number;
+	data_size?: number;
+	column_count?: number;
+	comment?: string;
+	error?: string;
 }

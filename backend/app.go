@@ -141,6 +141,18 @@ func (a *App) GetTableSelections() ([]string, error) {
 	return a.storageManager.GetTableSelections(a.currentConfig.ID)
 }
 
+// GetTablesMetadata 获取表元数据
+func (a *App) GetTablesMetadata(tableNames []string) (map[string]map[string]interface{}, error) {
+	if a.dbManager == nil {
+		return nil, fmt.Errorf("database manager not initialized")
+	}
+	if a.currentConfig == nil {
+		return nil, fmt.Errorf("no active database connection")
+	}
+
+	return a.dbManager.GetTablesMetadata(tableNames)
+}
+
 // Greet returns a greeting for the given name
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
