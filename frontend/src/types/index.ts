@@ -17,7 +17,13 @@ export interface RuleResult {
 	status: string;
 }
 
-export type AppStep = "welcome" | "config" | "analysis_tables" | "table_selection" | "analysis" | "results";
+export type AppStep =
+	| "welcome"
+	| "config"
+	| "analysis_tables"
+	| "table_selection"
+	| "analysis"
+	| "results";
 
 export interface TableInfo {
 	name: string;

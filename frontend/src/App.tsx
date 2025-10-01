@@ -8,7 +8,13 @@ import { ConfigPage } from "@/pages/ConfigPage";
 import { ResultsPage } from "@/pages/ResultsPage";
 import { TableSelectionPage } from "@/pages/TablesPage";
 import { WelcomePage } from "@/pages/WelcomePage";
-import type { AppStep, DatabaseConfig, RuleResult, TableInfo } from "@/types";
+import type {
+	AppStep,
+	DatabaseConfig,
+	RuleResult,
+	TableInfo,
+	TableMetadata,
+} from "@/types";
 import {
 	AnalyzeTables,
 	ConnectDatabase,
@@ -210,7 +216,7 @@ function App() {
 		setTempSelectedTables(newTempSelectedTables);
 	};
 
-	const handleSelectAll = async () => {
+	const _handleSelectAll = async () => {
 		// 只选择存在的表
 		const existingTables = tables
 			.filter((table) => table.exists)
@@ -226,7 +232,7 @@ function App() {
 		}
 	};
 
-	const handleDeselectAll = async () => {
+	const _handleDeselectAll = async () => {
 		setSelectedTables([]);
 
 		// 保存选择状态到后端
@@ -259,8 +265,8 @@ function App() {
 		} catch (error) {
 			console.error("Failed to load table metadata:", error);
 			// 返回空的元数据对象
-			const emptyMetadata: Record<string, any> = {};
-			tableNames.forEach(tableName => {
+			const emptyMetadata: Record<string, TableMetadata> = {};
+			tableNames.forEach((tableName) => {
 				emptyMetadata[tableName] = { error: "Failed to load metadata" };
 			});
 			return emptyMetadata;
@@ -282,7 +288,7 @@ function App() {
 			toast.success("分析完成");
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : String(error));
-			setCurrentStep("tables");
+			setCurrentStep("analysis_tables");
 		}
 	};
 

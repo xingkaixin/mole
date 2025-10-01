@@ -76,6 +76,7 @@ export function WelcomePage({
 					{!connections || connections.length === 0 ? (
 						<div className="text-center py-12">
 							<button
+								type="button"
 								onClick={(e) => {
 									e.preventDefault();
 									e.stopPropagation();
