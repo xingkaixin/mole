@@ -7,7 +7,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { DatabaseConfig } from "@/types";
+import { useState } from "react";
 
 interface WelcomePageProps {
   connections: DatabaseConfig[];
@@ -24,6 +33,28 @@ export function WelcomePage({
   onDeleteConnection,
   onSelectConnection,
 }: WelcomePageProps) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [connectionToDelete, setConnectionToDelete] = useState<DatabaseConfig | null>(null);
+
+  const handleDeleteClick = (connection: DatabaseConfig) => {
+    setConnectionToDelete(connection);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    console.log('Confirm delete:', connectionToDelete);
+    if (connectionToDelete?.id) {
+      onDeleteConnection(connectionToDelete.id);
+    }
+    setDeleteDialogOpen(false);
+    setConnectionToDelete(null);
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setConnectionToDelete(null);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
       <div className="max-w-6xl mx-auto">
@@ -37,31 +68,28 @@ export function WelcomePage({
 
         {/* Database Connections */}
         <div className="bg-white rounded-2xl shadow-lg p-8">
-          <div className="flex justify-between items-center mb-6">
+          <div className="mb-6">
             <h2 className="text-2xl font-semibold text-gray-900">数据库连接</h2>
-            <Button
-              onClick={onAddConnection}
-              className="flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              添加连接
-            </Button>
           </div>
 
           {!connections || connections.length === 0 ? (
             <div className="text-center py-12">
-              <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                <Plus className="w-8 h-8 text-gray-400" />
-              </div>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onAddConnection();
+                }}
+                className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors cursor-pointer"
+              >
+                <Plus className="w-8 h-8 text-gray-600" />
+              </button>
               <h3 className="text-lg font-medium text-gray-900 mb-2">
                 暂无数据库连接
               </h3>
-              <p className="text-gray-500 mb-6">
-                请先添加数据库连接以开始数据探查
+              <p className="text-gray-500">
+                点击上方加号添加数据库连接以开始数据探查
               </p>
-              <Button onClick={onAddConnection} size="lg">
-                添加第一个连接
-              </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -69,7 +97,11 @@ export function WelcomePage({
                 <Card
                   key={connection.id}
                   className="p-4 cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => onSelectConnection(connection)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onSelectConnection(connection);
+                  }}
                 >
                   <div className="flex justify-between items-start mb-3">
                     <div>
@@ -102,12 +134,9 @@ export function WelcomePage({
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={(e) => {
+                            e.preventDefault();
                             e.stopPropagation();
-                            if (confirm("确定要删除这个连接吗？")) {
-                              if (connection.id) {
-                                onDeleteConnection(connection.id);
-                              }
-                            }
+                            handleDeleteClick(connection);
                           }}
                           className="text-red-600"
                         >
@@ -130,6 +159,26 @@ export function WelcomePage({
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确认删除</DialogTitle>
+            <DialogDescription>
+              确定要删除连接 "{connectionToDelete?.name}" 吗？此操作无法撤销。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelDelete}>
+              取消
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

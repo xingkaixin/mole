@@ -86,25 +86,35 @@ function App() {
     try {
       await TestDatabaseConnection(dbConfig);
 
-      const newConnection: DatabaseConfig = {
+      const connectionToSave: DatabaseConfig = {
         ...dbConfig,
-        id: Date.now().toString()
+        // 如果是新增连接，生成新ID；如果是编辑，保持原ID
+        id: dbConfig.id || Date.now().toString()
       };
 
       // 保存到后端存储
-      await SaveDatabaseConnection(newConnection);
+      await SaveDatabaseConnection(connectionToSave);
 
       // 更新本地状态
-      const newConnections = [...connections, newConnection];
+      let newConnections: DatabaseConfig[];
+      if (isAddingConnection) {
+        // 新增连接
+        newConnections = [...connections, connectionToSave];
+      } else {
+        // 编辑连接 - 替换原有连接
+        newConnections = connections.map(conn =>
+          conn.id === connectionToSave.id ? connectionToSave : conn
+        );
+      }
       saveConnections(newConnections);
 
-      setCurrentConnection(newConnection);
+      setCurrentConnection(connectionToSave);
       setIsAddingConnection(false);
 
       // 自动连接并获取表清单
-      await connectAndGetTables(newConnection);
+      await connectAndGetTables(connectionToSave);
 
-      toast.success("连接保存成功");
+      toast.success(isAddingConnection ? "连接添加成功" : "连接更新成功");
     } catch (_error) {
       toast.error("连接测试失败，请检查配置");
     }
@@ -176,10 +186,19 @@ function App() {
   };
 
   const handleDeleteConnection = async (connectionId: string) => {
+    console.log('Deleting connection:', connectionId, 'current connections:', connections);
     try {
       await DeleteDatabaseConnection(connectionId);
       const newConnections = connections.filter(conn => conn.id !== connectionId);
+      console.log('New connections after delete:', newConnections);
       saveConnections(newConnections);
+
+      // 如果删除的是当前选中的连接，清理 currentConnection
+      if (currentConnection?.id === connectionId) {
+        console.log('Clearing current connection');
+        setCurrentConnection(null);
+      }
+
       toast.success("连接已删除");
     } catch (error) {
       toast.error("删除连接失败");
@@ -220,6 +239,7 @@ function App() {
       <div className="flex-1 overflow-auto">
         {currentStep === "welcome" && (
           <WelcomePage
+            key={connections.length} // 强制重新渲染当连接数量变化时
             connections={connections}
             onAddConnection={handleAddConnection}
             onEditConnection={handleEditConnection}
