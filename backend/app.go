@@ -8,12 +8,12 @@ import (
 
 // App struct
 type App struct {
-	ctx             context.Context
-	dbManager       *DatabaseManager
-	analysisEngine  *AnalysisEngine
-	storageManager  *StorageManager
-	currentConfig   *DatabaseConfig
-	taskManager     *TaskManager
+	ctx            context.Context
+	dbManager      *DatabaseManager
+	analysisEngine *AnalysisEngine
+	storageManager *StorageManager
+	currentConfig  *DatabaseConfig
+	taskManager    *TaskManager
 }
 
 // NewApp creates a new App application struct

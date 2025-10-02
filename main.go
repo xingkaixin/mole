@@ -3,10 +3,10 @@ package main
 import (
 	"embed"
 
-	"mole/backend"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"mole/backend"
 )
 
 //go:embed all:frontend/dist
