@@ -3,6 +3,7 @@ package backend
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 )
 
 // AnalysisRule 分析规则接口
@@ -44,23 +45,11 @@ func (r *NonNullRateRule) GetDescription() string {
 }
 
 func (r *NonNullRateRule) Execute(db *sql.DB, tableName string, config *DatabaseConfig) (interface{}, error) {
-	fmt.Printf("NonNullRateRule: Starting analysis for table %s in database %s\n", tableName, config.Database)
-
-	// 获取表的列信息 - 使用更简单的方式，避免复杂的查询
+	// 获取表的列信息
 	query := fmt.Sprintf("SHOW COLUMNS FROM %s", tableName)
 	rows, err := db.Query(query)
 	if err != nil {
-		fmt.Printf("NonNullRateRule: Failed to get columns for table %s with SHOW COLUMNS: %v\n", tableName, err)
-		// 尝试使用information_schema作为备用方案
-		rows, err = db.Query(`
-			SELECT column_name
-			FROM information_schema.columns
-			WHERE table_schema = ? AND table_name = ?
-		`, config.Database, tableName)
-		if err != nil {
-			fmt.Printf("NonNullRateRule: Failed to get columns for table %s with information_schema: %v\n", tableName, err)
-			return nil, fmt.Errorf("failed to get columns for table %s: %w", tableName, err)
-		}
+		return nil, fmt.Errorf("failed to get columns for table %s: %w", tableName, err)
 	}
 	defer rows.Close()
 
@@ -68,56 +57,53 @@ func (r *NonNullRateRule) Execute(db *sql.DB, tableName string, config *Database
 	for rows.Next() {
 		var columnName string
 		var columnType, nullType, keyType, defaultValue, extraType *string
-		// SHOW COLUMNS返回6个字段，某些字段可能为NULL，使用指针类型
 		if err := rows.Scan(&columnName, &columnType, &nullType, &keyType, &defaultValue, &extraType); err != nil {
-			fmt.Printf("NonNullRateRule: Failed to scan column name: %v\n", err)
-			continue // 不跳过整个分析，只跳过这个列
+			continue
 		}
 		columns = append(columns, columnName)
 	}
-	fmt.Printf("NonNullRateRule: Found %d columns for table %s: %v\n", len(columns), tableName, columns)
 
 	if len(columns) == 0 {
-		fmt.Printf("NonNullRateRule: No columns found for table %s\n", tableName)
 		return make(map[string]float64), nil
 	}
 
-	// 先获取表的总行数（只需要获取一次）
-	var totalCount int64
-	err = db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName)).Scan(&totalCount)
-	if err != nil {
-		fmt.Printf("NonNullRateRule: Failed to get total row count for table %s: %v\n", tableName, err)
-		return nil, fmt.Errorf("failed to get row count for table %s: %w", tableName, err)
-	}
-	fmt.Printf("NonNullRateRule: Table %s total rows: %d\n", tableName, totalCount)
-
-	// 计算每列的非空值率
-	result := make(map[string]float64)
+	// 优化方案：构建单个SQL查询计算所有列的非空值率
+	// 利用MySQL布尔表达式特性：true=1, false=0
+	// AVG(column IS NULL) 计算空置率，1 - AVG(column IS NULL) 得到非空值率
+	// 性能提升：从 2N+1 次查询减少到 1 次查询
+	var selectParts []string
 	for _, column := range columns {
-		fmt.Printf("NonNullRateRule: Analyzing column %s\n", column)
-
-		// 获取非空值数量
-		var nonNullCount int64
-		query := fmt.Sprintf("SELECT COUNT(%s) FROM %s", column, tableName)
-		fmt.Printf("NonNullRateRule: Executing query: %s\n", query)
-
-		err = db.QueryRow(query).Scan(&nonNullCount)
-		if err != nil {
-			fmt.Printf("NonNullRateRule: Failed to get non-null count for column %s: %v\n", column, err)
-			// 设置为0，不跳过整个列
-			result[column] = 0.0
-			continue
-		}
-
-		var nonNullRate float64
-		if totalCount > 0 {
-			nonNullRate = float64(nonNullCount) / float64(totalCount)
-		}
-		result[column] = nonNullRate
-		fmt.Printf("NonNullRateRule: Column %s: %d/%d = %.2f%%\n", column, nonNullCount, totalCount, nonNullRate*100)
+		selectParts = append(selectParts, fmt.Sprintf("1 - AVG(%s IS NULL) as %s", column, column))
 	}
 
-	fmt.Printf("NonNullRateRule: Completed analysis for table %s, result: %v\n", tableName, result)
+	sqlQuery := fmt.Sprintf("SELECT %s FROM %s", strings.Join(selectParts, ", "), tableName)
+	row := db.QueryRow(sqlQuery)
+
+	// 准备结果容器和扫描器
+	scanners := make([]interface{}, len(columns))
+	for i := range scanners {
+		var rate float64
+		scanners[i] = &rate
+	}
+
+	// 执行单次查询并扫描所有结果
+	if err := row.Scan(scanners...); err != nil {
+		return nil, fmt.Errorf("failed to scan non-null rates: %w", err)
+	}
+
+	// 构建最终结果，确保数据有效性
+	result := make(map[string]float64)
+	for i, column := range columns {
+		rate := *(scanners[i].(*float64))
+		// 数据验证：确保结果在合理范围内 [0, 1]
+		if rate < 0 {
+			rate = 0
+		} else if rate > 1 {
+			rate = 1
+		}
+		result[column] = rate
+	}
+
 	return result, nil
 }
 
