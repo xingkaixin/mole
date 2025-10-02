@@ -31,6 +31,8 @@ type AnalysisTask struct {
 	CompletedAt    *time.Time      `json:"completed_at"`
 	Duration       time.Duration   `json:"duration"`
 	Result         interface{}     `json:"result"`
+	ctx            context.Context `json:"-"`
+	cancel         context.CancelFunc `json:"-"`
 }
 
 // TaskManager 任务管理器
@@ -89,6 +91,8 @@ func (tm *TaskManager) AddTask(task *AnalysisTask) error {
 		return fmt.Errorf("task with ID %s already exists", task.ID)
 	}
 
+	// 为每个任务创建独立的context
+	task.ctx, task.cancel = context.WithCancel(context.Background())
 	task.Status = TaskStatusPending
 	tm.tasks[task.ID] = task
 
@@ -97,6 +101,8 @@ func (tm *TaskManager) AddTask(task *AnalysisTask) error {
 	case tm.taskQueue <- task:
 		return nil
 	default:
+		// 如果队列满了，取消context
+		task.cancel()
 		return fmt.Errorf("task queue is full")
 	}
 }
@@ -134,8 +140,15 @@ func (tm *TaskManager) CancelTask(taskID string) error {
 		return fmt.Errorf("task not found")
 	}
 
+	// 调用任务的cancel函数，立即取消正在执行的SQL查询
+	// 这会触发所有使用task.ctx的QueryContext和QueryRowContext调用返回context.Canceled错误
+	if task.cancel != nil {
+		task.cancel()
+		task.cancel = nil // 清理cancel函数引用，防止重复调用
+	}
+
 	if task.Status == TaskStatusRunning {
-		// 对于运行中的任务，需要额外的取消逻辑
+		// 对于运行中的任务，标记为取消并设置完成时间
 		task.Status = TaskStatusCancelled
 		task.ErrorMessage = "任务被取消"
 		now := time.Now()
@@ -207,8 +220,12 @@ func (tm *TaskManager) performTableAnalysis(task *AnalysisTask) {
 			// 更新进度为30%
 			tm.updateTaskProgress(task.ID, 30)
 
-			// 使用传入的数据库配置执行分析
-			analysisResults, err := tm.analysisEngine.ExecuteAnalysis(db, task.TableName, task.DatabaseConfig, ruleNames)
+			// 为任务创建带120秒超时的context
+			timeoutCtx, timeoutCancel := context.WithTimeout(task.ctx, 120*time.Second)
+			defer timeoutCancel()
+
+			// 使用带超时的context执行分析
+			analysisResults, err := tm.analysisEngine.ExecuteAnalysis(timeoutCtx, db, task.TableName, task.DatabaseConfig, ruleNames)
 
 			// 更新进度为80%
 			tm.updateTaskProgress(task.ID, 80)
@@ -220,13 +237,24 @@ func (tm *TaskManager) performTableAnalysis(task *AnalysisTask) {
 			task.CompletedAt = &now
 			task.Duration = now.Sub(*task.StartedAt)
 
+			// 清理任务context资源
+			if task.cancel != nil {
+				task.cancel()
+				task.cancel = nil
+			}
+
 			if err != nil {
 				task.Status = TaskStatusFailed
-				task.ErrorMessage = err.Error()
+				errorMessage := err.Error()
+				// 检查是否是超时错误
+				if timeoutCtx.Err() == context.DeadlineExceeded {
+					errorMessage = "分析任务超时（120秒限制）"
+				}
+				task.ErrorMessage = errorMessage
 				task.Result = map[string]interface{}{
 					"table_name": task.TableName,
 					"status":     "failed",
-					"error":      err.Error(),
+					"error":      errorMessage,
 				}
 
 				// 保存失败的分析结果到存储管理器

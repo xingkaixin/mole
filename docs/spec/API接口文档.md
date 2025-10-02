@@ -307,12 +307,18 @@ Promise<TaskStatusInfo[]>  // 任务状态信息数组
 
 **接口**: `CancelTask(taskID: string): Promise<void>`
 
-**功能**: 取消指定的分析任务
+**功能**: 取消指定的分析任务，立即中断正在执行的SQL查询
 
 **参数**:
 ```typescript
 taskID: string  // 要取消的任务ID
 ```
+
+**特性**:
+- 立即中断MySQL查询，释放数据库资源
+- 任务状态实时更新为"已取消"
+- 支持120秒超时自动取消
+- context传播确保所有相关操作都被取消
 
 ---
 
@@ -544,6 +550,7 @@ checkProgress();
 - **非空值率分析**: 从 2N+1 次查询优化为 1 次查询
 - **MySQL布尔表达式**: 利用 `AVG(column IS NULL)` 特性
 - **大表分析**: 显著提升多列数据表的性能表现
+- **查询取消机制**: context感知的SQL查询中断，120秒超时保护
 
 ---
 

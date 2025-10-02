@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -10,7 +11,7 @@ import (
 type AnalysisRule interface {
 	GetName() string
 	GetDescription() string
-	Execute(db *sql.DB, tableName string, config *DatabaseConfig) (interface{}, error)
+	Execute(ctx context.Context, db *sql.DB, tableName string, config *DatabaseConfig) (interface{}, error)
 }
 
 // RowCountRule 行数统计规则
@@ -24,9 +25,9 @@ func (r *RowCountRule) GetDescription() string {
 	return "统计表的行数"
 }
 
-func (r *RowCountRule) Execute(db *sql.DB, tableName string, config *DatabaseConfig) (interface{}, error) {
+func (r *RowCountRule) Execute(ctx context.Context, db *sql.DB, tableName string, config *DatabaseConfig) (interface{}, error) {
 	var rowCount int64
-	err := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName)).Scan(&rowCount)
+	err := db.QueryRowContext(ctx, fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName)).Scan(&rowCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get row count for table %s: %w", tableName, err)
 	}
@@ -44,10 +45,10 @@ func (r *NonNullRateRule) GetDescription() string {
 	return "统计列的非空值率"
 }
 
-func (r *NonNullRateRule) Execute(db *sql.DB, tableName string, config *DatabaseConfig) (interface{}, error) {
+func (r *NonNullRateRule) Execute(ctx context.Context, db *sql.DB, tableName string, config *DatabaseConfig) (interface{}, error) {
 	// 获取表的列信息
 	query := fmt.Sprintf("SHOW COLUMNS FROM %s", tableName)
-	rows, err := db.Query(query)
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get columns for table %s: %w", tableName, err)
 	}
@@ -77,7 +78,7 @@ func (r *NonNullRateRule) Execute(db *sql.DB, tableName string, config *Database
 	}
 
 	sqlQuery := fmt.Sprintf("SELECT %s FROM %s", strings.Join(selectParts, ", "), tableName)
-	row := db.QueryRow(sqlQuery)
+	row := db.QueryRowContext(ctx, sqlQuery)
 
 	// 准备结果容器和扫描器
 	scanners := make([]interface{}, len(columns))
@@ -146,7 +147,7 @@ func (e *AnalysisEngine) GetAvailableRules() []string {
 }
 
 // ExecuteAnalysis 执行分析
-func (e *AnalysisEngine) ExecuteAnalysis(db *sql.DB, tableName string, config *DatabaseConfig, ruleNames []string) (map[string]interface{}, error) {
+func (e *AnalysisEngine) ExecuteAnalysis(ctx context.Context, db *sql.DB, tableName string, config *DatabaseConfig, ruleNames []string) (map[string]interface{}, error) {
 	result := make(map[string]interface{})
 
 	for _, ruleName := range ruleNames {
@@ -155,7 +156,7 @@ func (e *AnalysisEngine) ExecuteAnalysis(db *sql.DB, tableName string, config *D
 			continue // 跳过不存在的规则
 		}
 
-		ruleResult, err := rule.Execute(db, tableName, config)
+		ruleResult, err := rule.Execute(ctx, db, tableName, config)
 		if err != nil {
 			result[ruleName] = map[string]interface{}{
 				"error": err.Error(),
