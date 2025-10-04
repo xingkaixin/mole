@@ -23,6 +23,7 @@ make deps
 make dev
 ```
 
+- ./frontend/src/types/index.d.ts: global types
 
 ## Key Frontend Libraries
 

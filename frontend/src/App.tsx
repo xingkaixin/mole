@@ -8,7 +8,6 @@ import { AnalysisTablesPage } from "@/pages/AnalysisTablesPage";
 import { ConfigPage } from "@/pages/ConfigPage";
 import { ResultsPage } from "@/pages/ResultsPage";
 import { TableSelectionPage } from "@/pages/TablesPage";
-import { TaskProgressPage } from "@/pages/TaskProgressPage";
 import { TaskManagementPage } from "@/pages/TaskManagementPage";
 import { WelcomePage } from "@/pages/WelcomePage";
 import type {
@@ -545,9 +544,7 @@ function App() {
 					/>
 				)}
 
-				{currentStep === "tasks" && (
-					<TaskManagementPage />
-				)}
+				{currentStep === "tasks" && <TaskManagementPage />}
 			</div>
 		</div>
 	);

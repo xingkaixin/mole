@@ -1,6 +1,13 @@
 "use client";
 
-import { Copy, Database, Edit, MoreVertical, RefreshCw, Trash2 } from "lucide-react";
+import {
+	Copy,
+	Database,
+	Edit,
+	MoreVertical,
+	RefreshCw,
+	Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -10,7 +17,6 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { DatabaseConfig } from "@/types";
-
 
 type DatabaseCardProps = {
 	connection: DatabaseConfig;
@@ -43,30 +49,38 @@ export function DatabaseCard({
 
 		try {
 			// 调用Go后端的UpdateDatabaseMetadata方法
-			const { UpdateDatabaseMetadata } = await import("../../wailsjs/go/backend/App");
+			const { UpdateDatabaseMetadata } = await import(
+				"../../wailsjs/go/backend/App"
+			);
 			const result = await UpdateDatabaseMetadata(connection.id);
 
 			// 根据返回的状态显示相应的消息
 			if (result.status === "success") {
-				toast.success(`"${result.connectionName || connection.name}" 字典更新成功`, {
-					description: result.message,
-					action: {
-						label: "查看详情",
-						onClick: () => {
-							toast.info(`更新统计`, {
-								description: `表数量: ${result.tableCount}, 列数量: ${result.columnCount}`,
-							});
+				toast.success(
+					`"${result.connectionName || connection.name}" 字典更新成功`,
+					{
+						description: result.message,
+						action: {
+							label: "查看详情",
+							onClick: () => {
+								toast.info(`更新统计`, {
+									description: `表数量: ${result.tableCount}, 列数量: ${result.columnCount}`,
+								});
+							},
 						},
 					},
-				});
+				);
 			} else {
-				toast.error(`"${result.connectionName || connection.name}" 字典更新失败`, {
-					description: result.message,
-					action: {
-						label: "重试",
-						onClick: handleUpdateMetadata,
+				toast.error(
+					`"${result.connectionName || connection.name}" 字典更新失败`,
+					{
+						description: result.message,
+						action: {
+							label: "重试",
+							onClick: handleUpdateMetadata,
+						},
 					},
-				});
+				);
 			}
 		} catch (error) {
 			console.error("更新字典失败:", error);
@@ -84,9 +98,11 @@ export function DatabaseCard({
 	};
 
 	return (
-		<div className={`bg-card border border-border rounded-lg p-6 hover:border-primary/50 transition-colors group relative ${
-				isUpdating ? 'ring-2 ring-primary/20' : ''
-			}`}>
+		<div
+			className={`bg-card border border-border rounded-lg p-6 hover:border-primary/50 transition-colors group relative ${
+				isUpdating ? "ring-2 ring-primary/20" : ""
+			}`}
+		>
 			{/* 更新状态指示器 */}
 			{isUpdating && (
 				<div className="absolute top-2 left-2 w-2 h-2 bg-primary rounded-full animate-pulse" />
@@ -110,7 +126,9 @@ export function DatabaseCard({
 						onClick={handleUpdateMetadata}
 						disabled={isUpdating}
 					>
-						<RefreshCw className={`w-4 h-4 mr-2 ${isUpdating ? 'animate-spin' : ''}`} />
+						<RefreshCw
+							className={`w-4 h-4 mr-2 ${isUpdating ? "animate-spin" : ""}`}
+						/>
 						{isUpdating ? "更新中..." : "更新字典"}
 					</DropdownMenuItem>
 					<DropdownMenuItem className="text-destructive" onClick={handleDelete}>

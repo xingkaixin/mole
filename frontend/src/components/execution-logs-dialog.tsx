@@ -1,38 +1,56 @@
-"use client"
+"use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { Badge } from "@/components/ui/badge";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type TaskExecution = {
-	id: string
-	startTime: string
-	endTime: string
-	status: "success" | "failed" | "running"
-	tablesAnalyzed: number
-	results: string
-}
+	id: string;
+	startTime: string;
+	endTime: string;
+	status: "success" | "failed" | "running";
+	tablesAnalyzed: number;
+	results: string;
+};
 
 type ExecutionLogsDialogProps = {
-	open: boolean
-	onOpenChange: (open: boolean) => void
-	taskName: string
-	executions: TaskExecution[]
-}
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	taskName: string;
+	executions: TaskExecution[];
+};
 
-export function ExecutionLogsDialog({ open, onOpenChange, taskName, executions }: ExecutionLogsDialogProps) {
+export function ExecutionLogsDialog({
+	open,
+	onOpenChange,
+	taskName,
+	executions,
+}: ExecutionLogsDialogProps) {
 	const getStatusBadge = (status: string) => {
 		switch (status) {
 			case "success":
-				return <Badge variant="default" className="bg-green-500">成功</Badge>
+				return (
+					<Badge variant="default" className="bg-green-500">
+						成功
+					</Badge>
+				);
 			case "failed":
-				return <Badge variant="destructive">失败</Badge>
+				return <Badge variant="destructive">失败</Badge>;
 			case "running":
-				return <Badge variant="default" className="bg-blue-500">运行中</Badge>
+				return (
+					<Badge variant="default" className="bg-blue-500">
+						运行中
+					</Badge>
+				);
 			default:
-				return <Badge variant="outline">未知</Badge>
+				return <Badge variant="outline">未知</Badge>;
 		}
-	}
+	};
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -45,10 +63,15 @@ export function ExecutionLogsDialog({ open, onOpenChange, taskName, executions }
 					<div className="space-y-4">
 						{executions.length > 0 ? (
 							executions.map((execution) => (
-								<div key={execution.id} className="border border-border rounded-lg p-4 space-y-3">
+								<div
+									key={execution.id}
+									className="border border-border rounded-lg p-4 space-y-3"
+								>
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
-											<span className="text-sm font-medium">执行ID: {execution.id}</span>
+											<span className="text-sm font-medium">
+												执行ID: {execution.id}
+											</span>
 											{getStatusBadge(execution.status)}
 										</div>
 										<span className="text-xs text-muted-foreground">
@@ -85,5 +108,5 @@ export function ExecutionLogsDialog({ open, onOpenChange, taskName, executions }
 				</ScrollArea>
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }

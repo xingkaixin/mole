@@ -1,32 +1,43 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useId, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type CreateTaskDialogProps = {
-	open: boolean
-	onOpenChange: (open: boolean) => void
-	onCreateTask: (name: string) => void
-}
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	onCreateTask: (name: string) => void;
+};
 
-export function CreateTaskDialog({ open, onOpenChange, onCreateTask }: CreateTaskDialogProps) {
-	const [taskName, setTaskName] = useState("")
-	const [isSubmitting, setIsSubmitting] = useState(false)
+export function CreateTaskDialog({
+	open,
+	onOpenChange,
+	onCreateTask,
+}: CreateTaskDialogProps) {
+	const taskNameId = useId();
+	const [taskName, setTaskName] = useState("");
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault()
+		e.preventDefault();
 		if (taskName.trim()) {
-			setIsSubmitting(true)
-			await onCreateTask(taskName.trim())
-			setTaskName("")
-			setIsSubmitting(false)
+			setIsSubmitting(true);
+			await onCreateTask(taskName.trim());
+			setTaskName("");
+			setIsSubmitting(false);
 		}
-	}
+	};
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -37,9 +48,9 @@ export function CreateTaskDialog({ open, onOpenChange, onCreateTask }: CreateTas
 
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div className="space-y-2">
-						<Label htmlFor="taskName">任务名称</Label>
+						<Label htmlFor={taskNameId}>任务名称</Label>
 						<Input
-							id="taskName"
+							id={taskNameId}
 							value={taskName}
 							onChange={(e) => setTaskName(e.target.value)}
 							placeholder="例如: 用户数据分析"
@@ -49,7 +60,12 @@ export function CreateTaskDialog({ open, onOpenChange, onCreateTask }: CreateTas
 					</div>
 
 					<DialogFooter>
-						<Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => onOpenChange(false)}
+							disabled={isSubmitting}
+						>
 							取消
 						</Button>
 						<Button type="submit" disabled={!taskName.trim() || isSubmitting}>
@@ -59,5 +75,5 @@ export function CreateTaskDialog({ open, onOpenChange, onCreateTask }: CreateTas
 				</form>
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }

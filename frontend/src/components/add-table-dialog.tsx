@@ -1,76 +1,101 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
-import { Search } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { Search } from "lucide-react";
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 
 type Table = {
-	id: string
-	name: string
-	comment: string
-	rowCount: number
-	tableSize: number
-	columnCount: number
-}
+	id: string;
+	name: string;
+	comment: string;
+	rowCount: number;
+	tableSize: number;
+	columnCount: number;
+};
 
 type Connection = {
-	id: string
-	name: string
-	type: string
-	tables: Table[]
-}
+	id: string;
+	name: string;
+	type: string;
+	tables: Table[];
+};
 
 type AddTableDialogProps = {
-	open: boolean
-	onOpenChange: (open: boolean) => void
-	onAddTables: (tableIds: string[]) => void
-	connections: Connection[]
-	existingTableIds: string[]
-}
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	onAddTables: (tableIds: string[]) => void;
+	connections: Connection[];
+	existingTableIds: string[];
+};
 
-export function AddTableDialog({ open, onOpenChange, onAddTables, connections, existingTableIds }: AddTableDialogProps) {
-	const [selectedConnection, setSelectedConnection] = useState("")
-	const [selectedTables, setSelectedTables] = useState<string[]>([])
-	const [tableSearchQuery, setTableSearchQuery] = useState("")
+export function AddTableDialog({
+	open,
+	onOpenChange,
+	onAddTables,
+	connections,
+	existingTableIds,
+}: AddTableDialogProps) {
+	const [selectedConnection, setSelectedConnection] = useState("");
+	const [selectedTables, setSelectedTables] = useState<string[]>([]);
+	const [tableSearchQuery, setTableSearchQuery] = useState("");
 
-	const connection = connections.find((c) => c.id === selectedConnection)
+	const connection = connections.find((c) => c.id === selectedConnection);
 
-	const filteredTables = connection?.tables.filter(table =>
-		table.name.toLowerCase().includes(tableSearchQuery.toLowerCase()) ||
-		table.comment.toLowerCase().includes(tableSearchQuery.toLowerCase())
-	) || []
+	const filteredTables =
+		connection?.tables.filter(
+			(table) =>
+				table.name.toLowerCase().includes(tableSearchQuery.toLowerCase()) ||
+				table.comment.toLowerCase().includes(tableSearchQuery.toLowerCase()),
+		) || [];
 
 	const handleToggleTable = (tableId: string) => {
-		setSelectedTables((prev) => (prev.includes(tableId) ? prev.filter((t) => t !== tableId) : [...prev, tableId]))
-	}
+		setSelectedTables((prev) =>
+			prev.includes(tableId)
+				? prev.filter((t) => t !== tableId)
+				: [...prev, tableId],
+		);
+	};
 
 	const handleSubmit = async () => {
-		if (!connection) return
+		if (!connection) return;
 
-		await onAddTables(selectedTables)
-		setSelectedConnection("")
-		setSelectedTables([])
-		setTableSearchQuery("")
-	}
+		await onAddTables(selectedTables);
+		setSelectedConnection("");
+		setSelectedTables([]);
+		setTableSearchQuery("");
+	};
 
 	const formatSize = (size: number) => {
-		if (size < 1024) return `${size} B`
-		if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
-		if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`
-		return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`
-	}
+		if (size < 1024) return `${size} B`;
+		if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+		if (size < 1024 * 1024 * 1024)
+			return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+		return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+	};
 
 	const handleConnectionChange = (connectionId: string) => {
-		setSelectedConnection(connectionId)
-		setSelectedTables([]) // 切换连接时清空已选表
-		setTableSearchQuery("") // 清空搜索
-	}
+		setSelectedConnection(connectionId);
+		setSelectedTables([]); // 切换连接时清空已选表
+		setTableSearchQuery(""); // 清空搜索
+	};
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -83,7 +108,10 @@ export function AddTableDialog({ open, onOpenChange, onAddTables, connections, e
 					{/* 连接选择 */}
 					<div className="space-y-2">
 						<Label>选择数据库连接</Label>
-						<Select value={selectedConnection} onValueChange={handleConnectionChange}>
+						<Select
+							value={selectedConnection}
+							onValueChange={handleConnectionChange}
+						>
 							<SelectTrigger>
 								<SelectValue placeholder="选择连接" />
 							</SelectTrigger>
@@ -132,7 +160,9 @@ export function AddTableDialog({ open, onOpenChange, onAddTables, connections, e
 								<div className="border border-border rounded-lg p-4 space-y-3 overflow-y-auto flex-1">
 									{filteredTables.length > 0 ? (
 										filteredTables.map((table) => {
-											const isAlreadyAdded = existingTableIds.includes(table.id)
+											const isAlreadyAdded = existingTableIds.includes(
+												table.id,
+											);
 											// 调试信息
 											// console.log("表检查:", {
 											// 	tableId: table.id,
@@ -142,40 +172,53 @@ export function AddTableDialog({ open, onOpenChange, onAddTables, connections, e
 											// 	isInExisting: existingTableIds.includes(table.id)
 											// })
 											return (
-												<div key={table.id} className={`flex items-start gap-3 p-2 rounded ${isAlreadyAdded ? 'opacity-50' : 'hover:bg-secondary/50'}`}>
+												<div
+													key={table.id}
+													className={`flex items-start gap-3 p-2 rounded ${isAlreadyAdded ? "opacity-50" : "hover:bg-secondary/50"}`}
+												>
 													<Checkbox
 														id={table.id}
-														checked={selectedTables.includes(table.id) || isAlreadyAdded}
-														onCheckedChange={() => !isAlreadyAdded && handleToggleTable(table.id)}
+														checked={
+															selectedTables.includes(table.id) ||
+															isAlreadyAdded
+														}
+														onCheckedChange={() =>
+															!isAlreadyAdded && handleToggleTable(table.id)
+														}
 														disabled={isAlreadyAdded}
 														className="mt-1"
 													/>
 													<div className="flex-1 min-w-0">
-														<label htmlFor={table.id} className={`text-sm font-medium ${isAlreadyAdded ? 'cursor-not-allowed' : 'cursor-pointer'} block`}>
+														<label
+															htmlFor={table.id}
+															className={`text-sm font-medium ${isAlreadyAdded ? "cursor-not-allowed" : "cursor-pointer"} block`}
+														>
 															{table.name}
 															{isAlreadyAdded && (
-																<span className="ml-2 text-xs text-orange-500">(已添加)</span>
+																<span className="ml-2 text-xs text-orange-500">
+																	(已添加)
+																</span>
 															)}
 														</label>
-													{table.comment && (
-														<p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-															{table.comment}
-														</p>
-													)}
-													<div className="flex gap-4 mt-1">
-														<span className="text-xs text-muted-foreground">
-															{table.rowCount.toLocaleString()} 行
-														</span>
-														<span className="text-xs text-muted-foreground">
-															{formatSize(table.tableSize)}
-														</span>
-														<span className="text-xs text-muted-foreground">
-															{table.columnCount} 列
-														</span>
+														{table.comment && (
+															<p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+																{table.comment}
+															</p>
+														)}
+														<div className="flex gap-4 mt-1">
+															<span className="text-xs text-muted-foreground">
+																{table.rowCount.toLocaleString()} 行
+															</span>
+															<span className="text-xs text-muted-foreground">
+																{formatSize(table.tableSize)}
+															</span>
+															<span className="text-xs text-muted-foreground">
+																{table.columnCount} 列
+															</span>
+														</div>
 													</div>
 												</div>
-											</div>
-											)
+											);
 										})
 									) : (
 										<div className="text-center py-8 text-muted-foreground">
@@ -189,7 +232,11 @@ export function AddTableDialog({ open, onOpenChange, onAddTables, connections, e
 				</div>
 
 				<DialogFooter className="pt-4">
-					<Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() => onOpenChange(false)}
+					>
 						取消
 					</Button>
 					<Button onClick={handleSubmit} disabled={selectedTables.length === 0}>
@@ -198,5 +245,5 @@ export function AddTableDialog({ open, onOpenChange, onAddTables, connections, e
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
-	)
+	);
 }
