@@ -9,6 +9,7 @@ import { ConfigPage } from "@/pages/ConfigPage";
 import { ResultsPage } from "@/pages/ResultsPage";
 import { TableSelectionPage } from "@/pages/TablesPage";
 import { TaskProgressPage } from "@/pages/TaskProgressPage";
+import { TaskManagementPage } from "@/pages/TaskManagementPage";
 import { WelcomePage } from "@/pages/WelcomePage";
 import type {
 	AppStep,
@@ -545,13 +546,7 @@ function App() {
 				)}
 
 				{currentStep === "tasks" && (
-					<TaskProgressPage
-						onGetTasksByDatabase={GetTasksByDatabase}
-						onGetDatabaseConnections={GetDatabaseConnections}
-						onCancelTask={CancelTask}
-						onGoToReports={handleGoToReports}
-						onGoHome={handleGoHome}
-					/>
+					<TaskManagementPage />
 				)}
 			</div>
 		</div>

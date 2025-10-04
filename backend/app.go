@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // App struct
@@ -448,6 +450,176 @@ func (a *App) GetMetadataColumns(tableID string) ([]map[string]interface{}, erro
 	}
 
 	return result, nil
+}
+
+// CreateTask 创建任务
+func (a *App) CreateTask(name, description string) (map[string]interface{}, error) {
+	if a.storageManager == nil {
+		return nil, fmt.Errorf("storage manager not initialized")
+	}
+
+	task := &TaskInfo{
+		ID:          uuid.New().String(),
+		Name:        name,
+		Description: description,
+		Status:      "active",
+	}
+
+	err := a.storageManager.SaveTask(task)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create task: %w", err)
+	}
+
+	return map[string]interface{}{
+		"id":      task.ID,
+		"name":    task.Name,
+		"status":  "success",
+		"message": "任务创建成功",
+	}, nil
+}
+
+// GetAllTasks 获取所有任务
+func (a *App) GetAllTasks() ([]map[string]interface{}, error) {
+	if a.storageManager == nil {
+		return []map[string]interface{}{}, nil
+	}
+
+	tasks, err := a.storageManager.GetAllTasks()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tasks: %w", err)
+	}
+
+	var result []map[string]interface{}
+	for _, task := range tasks {
+		result = append(result, map[string]interface{}{
+			"id":          task.ID,
+			"name":        task.Name,
+			"description": task.Description,
+			"status":      task.Status,
+			"createdAt":   task.CreatedAt,
+			"updatedAt":   task.UpdatedAt,
+		})
+	}
+
+	return result, nil
+}
+
+// UpdateTask 更新任务
+func (a *App) UpdateTask(taskID, name, description string) (map[string]interface{}, error) {
+	if a.storageManager == nil {
+		return nil, fmt.Errorf("storage manager not initialized")
+	}
+
+	task, err := a.storageManager.GetTask(taskID)
+	if err != nil {
+		return nil, fmt.Errorf("task not found: %w", err)
+	}
+
+	task.Name = name
+	task.Description = description
+
+	err = a.storageManager.SaveTask(task)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update task: %w", err)
+	}
+
+	return map[string]interface{}{
+		"id":      task.ID,
+		"name":    task.Name,
+		"status":  "success",
+		"message": "任务更新成功",
+	}, nil
+}
+
+// DeleteTask 删除任务
+func (a *App) DeleteTask(taskID string) (map[string]interface{}, error) {
+	if a.storageManager == nil {
+		return nil, fmt.Errorf("storage manager not initialized")
+	}
+
+	err := a.storageManager.DeleteTask(taskID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to delete task: %w", err)
+	}
+
+	return map[string]interface{}{
+		"status":  "success",
+		"message": "任务删除成功",
+	}, nil
+}
+
+// AddTablesToTask 添加表到任务
+func (a *App) AddTablesToTask(taskID string, tableIDs []string) (map[string]interface{}, error) {
+	if a.storageManager == nil {
+		return nil, fmt.Errorf("storage manager not initialized")
+	}
+
+	err := a.storageManager.AddTablesToTask(taskID, tableIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add tables to task: %w", err)
+	}
+
+	return map[string]interface{}{
+		"status":  "success",
+		"message": fmt.Sprintf("成功添加 %d 个表到任务", len(tableIDs)),
+	}, nil
+}
+
+// GetTaskTables 获取任务下的表
+func (a *App) GetTaskTables(taskID string) ([]map[string]interface{}, error) {
+	if a.storageManager == nil {
+		return []map[string]interface{}{}, nil
+	}
+
+	tables, err := a.storageManager.GetTaskTables(taskID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task tables: %w", err)
+	}
+
+	var result []map[string]interface{}
+	for _, table := range tables {
+		result = append(result, map[string]interface{}{
+			"id":             table.ID,
+			"taskId":         table.TaskID,
+			"tableId":        table.TableID,
+			"addedAt":        table.AddedAt,
+			"connectionId":   table.ConnectionID,
+			"connectionName": table.ConnectionName,
+			"tableName":      table.TableName,
+			"tableComment":   table.TableComment,
+			"rowCount":       table.RowCount,
+			"tableSize":      table.TableSize,
+			"columnCount":    table.ColumnCount,
+		})
+	}
+
+	return result, nil
+}
+
+// RemoveTableFromTask 从任务中移除表
+func (a *App) RemoveTableFromTask(taskID, tableID string) (map[string]interface{}, error) {
+	if a.storageManager == nil {
+		return nil, fmt.Errorf("storage manager not initialized")
+	}
+
+	err := a.storageManager.RemoveTableFromTask(taskID, tableID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to remove table from task: %w", err)
+	}
+
+	return map[string]interface{}{
+		"status":  "success",
+		"message": "表已从任务中移除",
+	}, nil
+}
+
+// GetAllConnectionsWithMetadata 获取所有连接及其表元数据
+func (a *App) GetAllConnectionsWithMetadata() ([]map[string]interface{}, error) {
+	if a.storageManager == nil {
+		return []map[string]interface{}{}, nil
+	}
+
+	return a.storageManager.GetAllConnectionsWithMetadata()
 }
 
 // Greet returns a greeting for the given name

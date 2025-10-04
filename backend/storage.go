@@ -161,6 +161,24 @@ func createTables(db *sql.DB) error {
 		UNIQUE(table_id, column_name),
 		FOREIGN KEY (table_id) REFERENCES metadata_tables(id) ON DELETE CASCADE
 	);
+	-- 任务信息表
+	CREATE TABLE IF NOT EXISTS tasks_info (
+		id TEXT PRIMARY KEY,
+		name TEXT NOT NULL,
+		description TEXT,
+		status TEXT NOT NULL DEFAULT 'active',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+	-- 任务表关联表
+	CREATE TABLE IF NOT EXISTS tasks_tbls (
+		id TEXT PRIMARY KEY,
+		task_id TEXT NOT NULL,
+		table_id TEXT NOT NULL,
+		added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (task_id) REFERENCES tasks_info(id) ON DELETE CASCADE,
+		FOREIGN KEY (table_id) REFERENCES metadata_tables(id) ON DELETE CASCADE
+	);
 	`
 
 	_, err := db.Exec(createTableSQL)
@@ -857,6 +875,272 @@ func (sm *StorageManager) GetMetadataColumns(tableID string) ([]*MetadataColumnI
 	}
 
 	return columns, nil
+}
+
+// TaskInfo 任务信息结构
+type TaskInfo struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Status      string `json:"status"`
+	CreatedAt   string `json:"createdAt"`
+	UpdatedAt   string `json:"updatedAt"`
+}
+
+// TaskTable 任务表关联结构
+type TaskTable struct {
+	ID       string `json:"id"`
+	TaskID   string `json:"taskId"`
+	TableID  string `json:"tableId"`
+	AddedAt  string `json:"addedAt"`
+}
+
+// TaskTableDetail 任务表详细信息（包含连接和表信息）
+type TaskTableDetail struct {
+	ID            string `json:"id"`
+	TaskID        string `json:"taskId"`
+	TableID       string `json:"tableId"`
+	AddedAt       string `json:"addedAt"`
+	ConnectionID  string `json:"connectionId"`
+	ConnectionName string `json:"connectionName"`
+	TableName     string `json:"tableName"`
+	TableComment  string `json:"tableComment"`
+	RowCount      int64  `json:"rowCount"`
+	TableSize     int64  `json:"tableSize"`
+	ColumnCount   int    `json:"columnCount"`
+}
+
+// SaveTask 保存任务
+func (sm *StorageManager) SaveTask(task *TaskInfo) error {
+	query := `
+		INSERT OR REPLACE INTO tasks_info (id, name, description, status, updated_at)
+		VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+	`
+
+	if task.Description == "" {
+		task.Description = "任务描述"
+	}
+
+	_, err := sm.db.Exec(query, task.ID, task.Name, task.Description, task.Status)
+	return err
+}
+
+// GetAllTasks 获取所有任务
+func (sm *StorageManager) GetAllTasks() ([]*TaskInfo, error) {
+	query := `
+		SELECT id, name, COALESCE(description, ''), status,
+		       datetime(created_at) as created_at,
+		       datetime(updated_at) as updated_at
+		FROM tasks_info
+		ORDER BY updated_at DESC
+	`
+
+	rows, err := sm.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tasks []*TaskInfo
+	for rows.Next() {
+		var task TaskInfo
+		err := rows.Scan(
+			&task.ID,
+			&task.Name,
+			&task.Description,
+			&task.Status,
+			&task.CreatedAt,
+			&task.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, &task)
+	}
+
+	return tasks, nil
+}
+
+// GetTask 根据ID获取任务
+func (sm *StorageManager) GetTask(taskID string) (*TaskInfo, error) {
+	query := `
+		SELECT id, name, COALESCE(description, ''), status,
+		       datetime(created_at) as created_at,
+		       datetime(updated_at) as updated_at
+		FROM tasks_info
+		WHERE id = ?
+	`
+
+	var task TaskInfo
+	err := sm.db.QueryRow(query, taskID).Scan(
+		&task.ID,
+		&task.Name,
+		&task.Description,
+		&task.Status,
+		&task.CreatedAt,
+		&task.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &task, nil
+}
+
+// DeleteTask 删除任务（级联删除任务表关联）
+func (sm *StorageManager) DeleteTask(taskID string) error {
+	query := `DELETE FROM tasks_info WHERE id = ?`
+	_, err := sm.db.Exec(query, taskID)
+	return err
+}
+
+// AddTablesToTask 添加表到任务
+func (sm *StorageManager) AddTablesToTask(taskID string, tableIDs []string) error {
+	if len(tableIDs) == 0 {
+		return nil
+	}
+
+	tx, err := sm.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	query := `
+		INSERT OR IGNORE INTO tasks_tbls (id, task_id, table_id, added_at)
+		VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+	`
+
+	for _, tableID := range tableIDs {
+		id := uuid.New().String()
+		_, err := tx.Exec(query, id, taskID, tableID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// GetTaskTables 获取任务下的表详细信息
+func (sm *StorageManager) GetTaskTables(taskID string) ([]*TaskTableDetail, error) {
+	query := `
+		SELECT
+			tt.id, tt.task_id, tt.table_id, datetime(tt.added_at) as added_at,
+			mt.connection_id, dc.name as connection_name,
+			mt.table_name, COALESCE(mt.table_comment, ''),
+			COALESCE(mt.row_count, 0), COALESCE(mt.table_size, 0),
+			COALESCE(mt.column_count, 0)
+		FROM tasks_tbls tt
+		JOIN metadata_tables mt ON tt.table_id = mt.id
+		JOIN database_connections dc ON mt.connection_id = dc.id
+		WHERE tt.task_id = ?
+		ORDER BY tt.added_at DESC
+	`
+
+	rows, err := sm.db.Query(query, taskID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tables []*TaskTableDetail
+	for rows.Next() {
+		var table TaskTableDetail
+		err := rows.Scan(
+			&table.ID,
+			&table.TaskID,
+			&table.TableID,
+			&table.AddedAt,
+			&table.ConnectionID,
+			&table.ConnectionName,
+			&table.TableName,
+			&table.TableComment,
+			&table.RowCount,
+			&table.TableSize,
+			&table.ColumnCount,
+		)
+		if err != nil {
+			return nil, err
+		}
+		tables = append(tables, &table)
+	}
+
+	return tables, nil
+}
+
+// RemoveTableFromTask 从任务中移除表
+// 注意：这里的tableID应该是tasks_tbls表的ID，不是metadata_tables表的ID
+func (sm *StorageManager) RemoveTableFromTask(taskID, taskTableID string) error {
+	query := `DELETE FROM tasks_tbls WHERE task_id = ? AND id = ?`
+	_, err := sm.db.Exec(query, taskID, taskTableID)
+	return err
+}
+
+// GetAllConnectionsWithMetadata 获取所有连接及其表元数据
+func (sm *StorageManager) GetAllConnectionsWithMetadata() ([]map[string]interface{}, error) {
+	query := `
+		SELECT
+			dc.id as connection_id, dc.name as connection_name, dc.type,
+			mt.id as table_id, mt.table_name, COALESCE(mt.table_comment, ''),
+			COALESCE(mt.row_count, 0), COALESCE(mt.table_size, 0),
+			COALESCE(mt.column_count, 0)
+		FROM database_connections dc
+		LEFT JOIN metadata_tables mt ON dc.id = mt.connection_id
+		ORDER BY dc.name, mt.table_name
+	`
+
+	rows, err := sm.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	connections := make(map[string]map[string]interface{})
+	for rows.Next() {
+		var connectionID, connectionName, connectionType string
+		var tableID, tableName, tableComment sql.NullString
+		var rowCount, tableSize sql.NullInt64
+		var columnCount sql.NullInt64
+
+		err := rows.Scan(
+			&connectionID, &connectionName, &connectionType,
+			&tableID, &tableName, &tableComment,
+			&rowCount, &tableSize, &columnCount,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if _, exists := connections[connectionID]; !exists {
+			connections[connectionID] = map[string]interface{}{
+				"id":      connectionID,
+				"name":    connectionName,
+				"type":    connectionType,
+				"tables":  []map[string]interface{}{},
+			}
+		}
+
+		if tableID.Valid {
+			table := map[string]interface{}{
+				"id":           tableID.String,
+				"name":         tableName.String,
+				"comment":      tableComment.String,
+				"rowCount":     rowCount.Int64,
+				"tableSize":    tableSize.Int64,
+				"columnCount":  columnCount.Int64,
+			}
+			connections[connectionID]["tables"] = append(connections[connectionID]["tables"].([]map[string]interface{}), table)
+		}
+	}
+
+	var result []map[string]interface{}
+	for _, conn := range connections {
+		result = append(result, conn)
+	}
+
+	return result, nil
 }
 
 // Close 关闭存储管理器
