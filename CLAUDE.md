@@ -23,7 +23,75 @@ make deps
 make dev
 ```
 
-- ./frontend/src/types/index.d.ts: global types
+## 项目结构
+
+```
+mole/
+├── backend/                    # Go 后端代码
+│   ├── app.go                 # 应用核心控制器
+│   ├── analysis.go            # 分析引擎和规则
+│   ├── connection_pool.go     # 数据库连接池
+│   ├── database.go            # 数据库管理
+│   ├── storage.go             # 本地存储管理
+│   └── task.go                # 任务管理器
+├── frontend/                   # React 前端代码
+│   ├── src/
+│   │   ├── components/        # 可复用组件
+│   │   │   ├── ui/           # UI基础组件 (Shadcn UI)
+│   │   │   ├── forms/        # 表单组件
+│   │   │   │   ├── DatabaseConfigForm.tsx
+│   │   │   │   └── TableSelectionForm.tsx
+│   │   │   ├── add-table-dialog.tsx
+│   │   │   ├── connection-dialog.tsx
+│   │   │   ├── create-task-dialog.tsx
+│   │   │   ├── database-card.tsx
+│   │   │   ├── execution-logs-dialog.tsx
+│   │   │   ├── AnalysisProgress.tsx
+│   │   │   ├── AnalysisResultViewer.tsx
+│   │   │   ├── ResultsTable.tsx
+│   │   │   ├── Sidebar.tsx
+│   │   │   ├── mode-toggle.tsx
+│   │   │   └── theme-provider.tsx
+│   │   ├── pages/            # 页面组件
+│   │   │   ├── WelcomePage.tsx
+│   │   │   ├── TablesPage.tsx
+│   │   │   ├── TaskManagementPage.tsx
+│   │   │   ├── TaskProgressPage.tsx
+│   │   │   ├── AnalysisPage.tsx
+│   │   │   ├── AnalysisTablesPage.tsx
+│   │   │   ├── AnalysisReportsPage.tsx
+│   │   │   ├── ResultsPage.tsx
+│   │   │   └── ConfigPage.tsx
+│   │   ├── types/            # TypeScript类型定义
+│   │   │   └── index.ts
+│   │   ├── lib/              # 工具函数
+│   │   │   └── utils.ts
+│   │   ├── App.tsx           # 应用主组件
+│   │   ├── main.tsx          # 前端入口
+│   │   └── global.css        # 全局样式
+│   ├── wailsjs/              # Wails 自动生成的绑定代码
+│   │   ├── go/backend/       # Go 后端API绑定
+│   │   └── runtime/          # Wails 运行时
+│   ├── package.json          # 前端依赖配置
+│   ├── vite.config.ts        # Vite 构建配置
+│   ├── tsconfig.json         # TypeScript 配置
+│   ├── biome.json            # 代码格式化和检查配置
+│   └── components.json       # Shadcn UI 配置
+├── docs/                      # 文档
+│   └── spec/                 # 技术规范文档
+│       ├── 开发指南.md
+│       ├── 技术架构文档.md
+│       ├── API接口文档.md
+│       ├── 数据库设计文档.md
+│       ├── 部署指南.md
+│       └── 功能链路说明文档.md
+├── main.go                    # 应用入口
+├── wails.json                 # Wails 应用配置
+├── go.mod                     # Go 模块定义
+├── go.sum                     # Go 依赖锁定文件
+├── Makefile                   # 构建脚本
+└── README.md                  # 项目说明
+```
 
 ## Key Frontend Libraries
 
