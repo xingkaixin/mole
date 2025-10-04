@@ -1,7 +1,6 @@
-import { Edit, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -16,6 +15,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { DatabaseCard } from "@/components/database-card";
 import type { DatabaseConfig } from "@/types";
 
 interface WelcomePageProps {
@@ -24,6 +24,7 @@ interface WelcomePageProps {
 	onEditConnection: (connection: DatabaseConfig) => void;
 	onDeleteConnection: (connectionId: string) => void;
 	onSelectConnection: (connection: DatabaseConfig) => void;
+	onDuplicateConnection: (connection: DatabaseConfig) => void;
 }
 
 export function WelcomePage({
@@ -32,6 +33,7 @@ export function WelcomePage({
 	onEditConnection,
 	onDeleteConnection,
 	onSelectConnection,
+	onDuplicateConnection,
 }: WelcomePageProps) {
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [connectionToDelete, setConnectionToDelete] =
@@ -57,109 +59,53 @@ export function WelcomePage({
 	};
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
-			<div className="max-w-6xl mx-auto">
-				{/* Header */}
-				<div className="text-center mb-12">
-					<h1 className="text-4xl font-bold text-gray-900 mb-4">Mole</h1>
-					<p className="text-xl text-gray-600 max-w-2xl mx-auto">
-						数据探查工具 - 帮助您快速分析数据库表结构、数据质量和业务规则
-					</p>
-				</div>
+		<div className="p-8">
+			{/* Header */}
+			<div className="mb-8">
+				<h1 className="text-3xl font-bold mb-2 text-balance">数据探查工具 - 帮助您快速分析数据库表结构、数据质量和业务规则</h1>
+				<p className="text-muted-foreground text-pretty">管理数据库连接、执行分析任务并查看详细报告</p>
+			</div>
 
-				{/* Database Connections */}
-				<div className="bg-white rounded-2xl shadow-lg p-8">
-					<div className="mb-6">
-						<h2 className="text-2xl font-semibold text-gray-900">数据库连接</h2>
-					</div>
-
-					{!connections || connections.length === 0 ? (
-						<div className="text-center py-12">
-							<button
-								type="button"
-								onClick={(e) => {
-									e.preventDefault();
-									e.stopPropagation();
-									onAddConnection();
-								}}
-								className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors cursor-pointer"
-							>
-								<Plus className="w-8 h-8 text-gray-600" />
-							</button>
-							<h3 className="text-lg font-medium text-gray-900 mb-2">
-								暂无数据库连接
-							</h3>
-							<p className="text-gray-500">
-								点击上方加号添加数据库连接以开始数据探查
+			{/* Database Connections Grid */}
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+				{!connections || connections.length === 0 ? (
+					<button
+						onClick={onAddConnection}
+						className="aspect-square border-2 border-dashed border-border rounded-lg flex items-center justify-center hover:border-primary hover:bg-secondary/50 transition-colors group"
+					>
+						<div className="text-center">
+							<div className="w-20 h-20 rounded-full border-2 border-dashed border-muted-foreground group-hover:border-primary mx-auto mb-4 flex items-center justify-center transition-colors">
+								<Plus className="w-10 h-10 text-muted-foreground group-hover:text-primary transition-colors" />
+							</div>
+							<p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+								添加数据库连接
 							</p>
 						</div>
-					) : (
-						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-							{connections.map((connection) => (
-								<Card
-									key={connection.id}
-									className="p-4 cursor-pointer hover:shadow-md transition-shadow"
-									onClick={(e) => {
-										e.preventDefault();
-										e.stopPropagation();
-										onSelectConnection(connection);
-									}}
-								>
-									<div className="flex justify-between items-start mb-3">
-										<div>
-											<h3 className="font-semibold text-gray-900">
-												{connection.name}
-											</h3>
-											<p className="text-sm text-gray-500 capitalize">
-												{connection.type}
-											</p>
-										</div>
-										<DropdownMenu>
-											<DropdownMenuTrigger asChild>
-												<Button
-													variant="ghost"
-													size="sm"
-													onClick={(e) => e.stopPropagation()}
-												>
-													<MoreHorizontal className="w-4 h-4" />
-												</Button>
-											</DropdownMenuTrigger>
-											<DropdownMenuContent align="end">
-												<DropdownMenuItem
-													onClick={(e) => {
-														e.stopPropagation();
-														onEditConnection(connection);
-													}}
-												>
-													<Edit className="w-4 h-4 mr-2" />
-													编辑
-												</DropdownMenuItem>
-												<DropdownMenuItem
-													onClick={(e) => {
-														e.preventDefault();
-														e.stopPropagation();
-														handleDeleteClick(connection);
-													}}
-													className="text-red-600"
-												>
-													<Trash2 className="w-4 h-4 mr-2" />
-													删除
-												</DropdownMenuItem>
-											</DropdownMenuContent>
-										</DropdownMenu>
-									</div>
-									<div className="space-y-1 text-sm text-gray-600">
-										<div>
-											{connection.host}:{connection.port}
-										</div>
-										<div>{connection.database}</div>
-										<div>{connection.username}</div>
-									</div>
-								</Card>
-							))}
-						</div>
-					)}
-				</div>
+					</button>
+				) : (
+					<>
+						{connections.map((connection) => (
+							<DatabaseCard
+								key={connection.id}
+								connection={connection}
+								onEdit={onEditConnection}
+								onDelete={onDeleteConnection}
+								onDuplicate={onDuplicateConnection}
+							/>
+						))}
+						<button
+							onClick={onAddConnection}
+							className="aspect-square border-2 border-dashed border-border rounded-lg flex items-center justify-center hover:border-primary hover:bg-secondary/50 transition-colors group"
+						>
+							<div className="text-center">
+								<div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground group-hover:border-primary mx-auto mb-3 flex items-center justify-center transition-colors">
+									<Plus className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
+								</div>
+								<p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">添加连接</p>
+							</div>
+						</button>
+					</>
+				)}
 			</div>
 
 			{/* Delete Confirmation Dialog */}

@@ -138,12 +138,34 @@ function App() {
 			setCurrentConnection(connectionToSave);
 			setIsAddingConnection(false);
 
-			// 自动连接并获取表清单
-			await connectAndGetTables(connectionToSave);
+			// 返回首页
+			setCurrentStep("welcome");
 
 			toast.success(isAddingConnection ? "连接添加成功" : "连接更新成功");
 		} catch (_error) {
 			toast.error("连接测试失败，请检查配置");
+		}
+	};
+
+	const duplicateConnection = async (connection: DatabaseConfig) => {
+		try {
+			const duplicatedConnection: DatabaseConfig = {
+				...connection,
+				id: Date.now().toString(), // 生成新的ID
+				name: `${connection.name} (副本)`, // 添加副本后缀
+			};
+
+			// 保存到后端存储
+			await SaveDatabaseConnection(duplicatedConnection);
+
+			// 更新本地状态
+			const newConnections = [...connections, duplicatedConnection];
+			saveConnections(newConnections);
+
+			toast.success("连接复制成功");
+		} catch (error) {
+			console.error("Failed to duplicate connection:", error);
+			toast.error("连接复制失败");
 		}
 	};
 
@@ -441,6 +463,7 @@ function App() {
 						onEditConnection={handleEditConnection}
 						onDeleteConnection={handleDeleteConnection}
 						onSelectConnection={handleSelectConnection}
+						onDuplicateConnection={duplicateConnection}
 					/>
 				)}
 

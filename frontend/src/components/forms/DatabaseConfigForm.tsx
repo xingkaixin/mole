@@ -1,8 +1,13 @@
-import { useId } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import type { DatabaseConfig } from "@/types";
+"use client"
+
+import type React from "react"
+import { useId } from "react"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { DatabaseConfig } from "@/types"
 
 interface DatabaseConfigFormProps {
 	config: DatabaseConfig;
@@ -36,113 +41,98 @@ export function DatabaseConfigForm({
 				</Button>
 			</div>
 
-			<div className="space-y-4">
+			<form onSubmit={(e) => { e.preventDefault(); onSaveConnection(); }} className="space-y-4">
 				{/* 连接名称 */}
-				<div>
-					<label htmlFor={`${idPrefix}-name`} className="text-sm font-medium">
-						连接名称
-					</label>
+				<div className="space-y-2">
+					<Label htmlFor={`${idPrefix}-name`}>连接别名</Label>
 					<Input
 						id={`${idPrefix}-name`}
 						value={config.name}
 						onChange={(e) => onConfigChange("name", e.target.value)}
-						placeholder="输入连接别名"
+						placeholder="例如: Production DB"
+						required
 					/>
 				</div>
 
-				<div className="grid grid-cols-2 gap-4">
-					<div>
-						<label htmlFor={`${idPrefix}-type`} className="text-sm font-medium">
-							数据库类型
-						</label>
-						<Input
-							id={`${idPrefix}-type`}
-							value={config.type}
-							onChange={(e) => onConfigChange("type", e.target.value)}
-							disabled
-						/>
-					</div>
-					<div>
-						<label htmlFor={`${idPrefix}-host`} className="text-sm font-medium">
-							主机地址
-						</label>
+				{/* 数据库类型 - 固定为 MySQL */}
+				<div className="space-y-2">
+					<Label htmlFor={`${idPrefix}-type`}>数据库类型</Label>
+					<Select value={config.type} onValueChange={(value) => onConfigChange("type", value)}>
+						<SelectTrigger id={`${idPrefix}-type`}>
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="MySQL">MySQL</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
+
+				{/* 主机和端口 */}
+				<div className="grid grid-cols-3 gap-4">
+					<div className="col-span-2 space-y-2">
+						<Label htmlFor={`${idPrefix}-host`}>主机地址</Label>
 						<Input
 							id={`${idPrefix}-host`}
 							value={config.host}
 							onChange={(e) => onConfigChange("host", e.target.value)}
-							placeholder="localhost"
+							placeholder="例如: localhost"
+							required
 						/>
 					</div>
-				</div>
-
-				<div className="grid grid-cols-2 gap-4">
-					<div>
-						<label htmlFor={`${idPrefix}-port`} className="text-sm font-medium">
-							端口
-						</label>
+					<div className="space-y-2">
+						<Label htmlFor={`${idPrefix}-port`}>端口</Label>
 						<Input
 							id={`${idPrefix}-port`}
-							type="number"
 							value={config.port}
 							onChange={(e) =>
 								onConfigChange("port", parseInt(e.target.value, 10) || 3306)
 							}
 							placeholder="3306"
-						/>
-					</div>
-					<div>
-						<label htmlFor={`${idPrefix}-name`} className="text-sm font-medium">
-							数据库名
-						</label>
-						<Input
-							id={`${idPrefix}-name`}
-							value={config.database}
-							onChange={(e) => onConfigChange("database", e.target.value)}
-							placeholder="database_name"
+							required
 						/>
 					</div>
 				</div>
 
+				{/* 数据库名称 */}
+				<div className="space-y-2">
+					<Label htmlFor={`${idPrefix}-database`}>数据库名称</Label>
+					<Input
+						id={`${idPrefix}-database`}
+						value={config.database}
+						onChange={(e) => onConfigChange("database", e.target.value)}
+						placeholder="例如: main_db"
+						required
+					/>
+				</div>
+
+				{/* 用户名和密码 */}
 				<div className="grid grid-cols-2 gap-4">
-					<div>
-						<label
-							htmlFor={`${idPrefix}-username`}
-							className="text-sm font-medium"
-						>
-							用户名
-						</label>
+					<div className="space-y-2">
+						<Label htmlFor={`${idPrefix}-username`}>用户名</Label>
 						<Input
 							id={`${idPrefix}-username`}
 							value={config.username}
 							onChange={(e) => onConfigChange("username", e.target.value)}
-							placeholder="root"
+							placeholder="数据库用户名"
+							required
 						/>
 					</div>
-					<div>
-						<label
-							htmlFor={`${idPrefix}-password`}
-							className="text-sm font-medium"
-						>
-							密码
-						</label>
+					<div className="space-y-2">
+						<Label htmlFor={`${idPrefix}-password`}>密码</Label>
 						<Input
 							id={`${idPrefix}-password`}
 							type="password"
 							value={config.password}
 							onChange={(e) => onConfigChange("password", e.target.value)}
-							placeholder="password"
+							placeholder="数据库密码"
+							required
 						/>
 					</div>
 				</div>
 
 				{/* 并发度配置 */}
-				<div>
-					<label
-						htmlFor={`${idPrefix}-concurrency`}
-						className="text-sm font-medium"
-					>
-						并发度
-					</label>
+				<div className="space-y-2">
+					<Label htmlFor={`${idPrefix}-concurrency`}>并发度</Label>
 					<Input
 						id={`${idPrefix}-concurrency`}
 						type="number"
@@ -172,14 +162,14 @@ export function DatabaseConfigForm({
 				)}
 
 				<div className="flex gap-4 pt-4">
-					<Button onClick={onTestConnection} variant="outline">
+					<Button type="button" onClick={onTestConnection} variant="outline">
 						测试连接
 					</Button>
-					<Button onClick={onSaveConnection}>
-						{isAdding ? "保存连接" : "更新连接"}
+					<Button type="submit">
+						{isAdding ? "添加" : "保存"}
 					</Button>
 				</div>
-			</div>
+			</form>
 		</Card>
 	);
 }
