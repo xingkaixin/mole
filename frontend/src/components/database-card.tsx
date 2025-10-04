@@ -7,25 +7,14 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import type { DatabaseConfig } from "@/types";
 
-type DatabaseConnection = {
-	id: string;
-	name: string;
-	alias: string;
-	type: string;
-	host: string;
-	port: string;
-	database: string;
-	dbname: string;
-	username: string;
-	password: string;
-};
 
 type DatabaseCardProps = {
-	connection: DatabaseConnection;
-	onEdit: (connection: DatabaseConnection) => void;
+	connection: DatabaseConfig;
+	onEdit: (connection: DatabaseConfig) => void;
 	onDelete: (id: string) => void;
-	onDuplicate: (connection: DatabaseConnection) => void;
+	onDuplicate: (connection: DatabaseConfig) => void;
 };
 
 export function DatabaseCard({
@@ -68,7 +57,7 @@ export function DatabaseCard({
 
 			{/* Connection Info */}
 			<h3 className="text-lg font-semibold mb-2 text-balance">
-				{connection.name || connection.alias}
+				{connection.name}
 			</h3>
 			<div className="space-y-1 text-sm">
 				<p className="text-muted-foreground">
@@ -81,7 +70,7 @@ export function DatabaseCard({
 				</p>
 				<p className="text-muted-foreground">
 					<span className="text-foreground font-medium">数据库:</span>{" "}
-					{connection.database || connection.dbname}
+					{connection.database}
 				</p>
 			</div>
 		</div>

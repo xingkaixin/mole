@@ -94,7 +94,7 @@ export function AnalysisResultViewer({
 				<div className="flex items-center gap-2">
 					<Database className="w-4 h-4 text-gray-500" />
 					<span className="font-medium">表名：</span>
-					<span>{result.tableName}</span>
+					<span>{String(result.tableName)}</span>
 				</div>
 				<div className="flex items-center gap-2">
 					<Database className="w-4 h-4 text-blue-500" />
