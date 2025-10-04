@@ -443,6 +443,17 @@ function App() {
 		}
 	};
 
+	const handleUpdateMetadata = async (connectionId: string) => {
+		try {
+			// 这里我们可以直接调用后端API，但为了保持一致性和更好的用户体验，
+			// 我们让DatabaseCard组件自己处理这个逻辑
+			toast.info("正在更新字典元数据...");
+		} catch (error) {
+			console.error("Failed to update metadata:", error);
+			toast.error("更新字典失败");
+		}
+	};
+
 	return (
 		<div className="h-screen flex bg-white">
 			<Toaster />
@@ -466,6 +477,7 @@ function App() {
 						onDeleteConnection={handleDeleteConnection}
 						onSelectConnection={handleSelectConnection}
 						onDuplicateConnection={duplicateConnection}
+						onUpdateMetadata={handleUpdateMetadata}
 					/>
 				)}
 

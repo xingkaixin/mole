@@ -181,6 +181,130 @@ func (dm *DatabaseManager) GetTablesMetadata(tableNames []string) (map[string]ma
 	return result, nil
 }
 
+// TableMetadata 表元数据结构
+type TableMetadata struct {
+	TableName    string           `json:"tableName"`
+	Comment      string           `json:"comment"`
+	DataSize     int64            `json:"dataSize"`
+	RowCount     int64            `json:"rowCount"`
+	ColumnCount  int              `json:"columnCount"`
+	Columns      []ColumnMetadata `json:"columns"`
+}
+
+// ColumnMetadata 列元数据结构
+type ColumnMetadata struct {
+	ColumnName    string `json:"columnName"`
+	ColumnComment string `json:"columnComment"`
+	ColumnOrdinal int    `json:"columnOrdinal"`
+	ColumnType    string `json:"columnType"`
+}
+
+// GetTableColumns 获取表的列信息
+func (dm *DatabaseManager) GetTableColumns(tableName string) ([]ColumnMetadata, error) {
+	if dm.db == nil {
+		return nil, fmt.Errorf("database not connected")
+	}
+
+	query := `
+		SELECT
+			column_name,
+			COALESCE(column_comment, '') as column_comment,
+			ordinal_position,
+			column_type
+		FROM information_schema.columns
+		WHERE table_schema = ? AND table_name = ?
+		ORDER BY ordinal_position
+	`
+
+	rows, err := dm.db.Query(query, dm.config.Database, tableName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query columns for table %s: %w", tableName, err)
+	}
+	defer rows.Close()
+
+	var columns []ColumnMetadata
+	for rows.Next() {
+		var column ColumnMetadata
+		err := rows.Scan(
+			&column.ColumnName,
+			&column.ColumnComment,
+			&column.ColumnOrdinal,
+			&column.ColumnType,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan column info: %w", err)
+		}
+		columns = append(columns, column)
+	}
+
+	return columns, nil
+}
+
+// GetTableFullMetadata 获取表的完整元数据信息（包括列信息）
+func (dm *DatabaseManager) GetTableFullMetadata(tableName string) (*TableMetadata, error) {
+	if dm.db == nil {
+		return nil, fmt.Errorf("database not connected")
+	}
+
+	// 获取基本表元数据
+	basicMetadata, err := dm.GetTableMetadata(tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	// 获取列信息
+	columns, err := dm.GetTableColumns(tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	// 构建完整元数据
+	metadata := &TableMetadata{
+		TableName:   tableName,
+		Columns:     columns,
+		ColumnCount: len(columns),
+	}
+
+	// 从基本元数据中提取其他信息
+	if comment, ok := basicMetadata["comment"].(string); ok {
+		metadata.Comment = comment
+	}
+	if dataSize, ok := basicMetadata["data_size"].(int64); ok {
+		metadata.DataSize = dataSize
+	}
+	if rowCount, ok := basicMetadata["row_count"].(int64); ok {
+		metadata.RowCount = rowCount
+	}
+
+	return metadata, nil
+}
+
+// GetAllTablesMetadata 获取所有表的完整元数据
+func (dm *DatabaseManager) GetAllTablesMetadata() ([]*TableMetadata, error) {
+	if dm.db == nil {
+		return nil, fmt.Errorf("database not connected")
+	}
+
+	// 获取所有表名
+	tableNames, err := dm.GetTables()
+	if err != nil {
+		return nil, err
+	}
+
+	var allMetadata []*TableMetadata
+	for _, tableName := range tableNames {
+		metadata, err := dm.GetTableFullMetadata(tableName)
+		if err != nil {
+			// 如果某个表获取失败，跳过但不中断整个流程
+			fmt.Printf("Warning: failed to get metadata for table %s: %v\n", tableName, err)
+			continue
+		}
+		allMetadata = append(allMetadata, metadata)
+	}
+
+	return allMetadata, nil
+}
+
 // GetDB 获取数据库连接
 func (dm *DatabaseManager) GetDB() *sql.DB {
 	return dm.db

@@ -27,6 +27,7 @@ interface WelcomePageProps {
   onDeleteConnection: (connectionId: string) => void;
   onSelectConnection: (connection: DatabaseConfig) => void;
   onDuplicateConnection: (connection: DatabaseConfig) => void;
+  onUpdateMetadata: (connectionId: string) => void;
 }
 
 export function WelcomePage({
@@ -36,6 +37,7 @@ export function WelcomePage({
   onDeleteConnection,
   onSelectConnection: _onSelectConnection,
   onDuplicateConnection,
+  onUpdateMetadata,
 }: WelcomePageProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [connectionToDelete, setConnectionToDelete] =
@@ -193,6 +195,7 @@ export function WelcomePage({
                 onEdit={onEditConnection}
                 onDelete={onDeleteConnection}
                 onDuplicate={onDuplicateConnection}
+                onUpdateMetadata={onUpdateMetadata}
               />
             ))}
             <button

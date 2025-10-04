@@ -303,6 +303,153 @@ func (a *App) GetTablesMetadata(tableNames []string) (map[string]map[string]inte
 	return a.dbManager.GetTablesMetadata(tableNames)
 }
 
+// UpdateDatabaseMetadata 更新数据库字典元数据
+func (a *App) UpdateDatabaseMetadata(connectionID string) (map[string]interface{}, error) {
+	if a.dbManager == nil {
+		return nil, fmt.Errorf("database manager not initialized")
+	}
+	if a.storageManager == nil {
+		return nil, fmt.Errorf("storage manager not initialized")
+	}
+
+	result := map[string]interface{}{
+		"status":     "started",
+		"connection": connectionID,
+		"message":    "开始更新字典元数据...",
+	}
+
+	// 获取数据库连接配置
+	connections, err := a.storageManager.GetConnections()
+	if err != nil {
+		result["status"] = "error"
+		result["message"] = fmt.Sprintf("获取数据库连接失败: %s", err.Error())
+		return result, err
+	}
+
+	// 找到指定的连接配置
+	var targetConfig *DatabaseConfig
+	var connectionName string
+	for _, conn := range connections {
+		if conn.ID == connectionID {
+			targetConfig = &conn
+			connectionName = conn.Name
+			break
+		}
+	}
+	if targetConfig == nil {
+		result["status"] = "error"
+		result["message"] = fmt.Sprintf("数据库连接不存在: %s", connectionID)
+		return result, fmt.Errorf("database connection not found: %s", connectionID)
+	}
+
+	result["connectionName"] = connectionName
+	result["message"] = fmt.Sprintf("正在连接到数据库 %s...", targetConfig.Database)
+
+	// 创建临时数据库管理器连接
+	tempDBManager := NewDatabaseManager()
+	err = tempDBManager.Connect(targetConfig)
+	if err != nil {
+		result["status"] = "error"
+		result["message"] = fmt.Sprintf("连接数据库失败: %s", err.Error())
+		return result, fmt.Errorf("failed to connect to database: %w", err)
+	}
+	defer tempDBManager.Close()
+
+	result["message"] = "正在获取表元数据..."
+
+	// 获取所有表的元数据
+	allMetadata, err := tempDBManager.GetAllTablesMetadata()
+	if err != nil {
+		result["status"] = "error"
+		result["message"] = fmt.Sprintf("获取表元数据失败: %s", err.Error())
+		return result, fmt.Errorf("failed to get tables metadata: %w", err)
+	}
+
+	result["message"] = fmt.Sprintf("正在更新 %d 个表的元数据...", len(allMetadata))
+	result["tableCount"] = len(allMetadata)
+
+	// 转换为TableMetadata指针切片
+	var tables []*TableMetadata
+	for _, metadata := range allMetadata {
+		tables = append(tables, metadata)
+	}
+
+	// 更新存储中的元数据
+	err = a.storageManager.UpdateDatabaseMetadata(connectionID, tables)
+	if err != nil {
+		result["status"] = "error"
+		result["message"] = fmt.Sprintf("更新元数据失败: %s", err.Error())
+		return result, fmt.Errorf("failed to update metadata: %w", err)
+	}
+
+	tableCount := len(tables)
+	columnCount := 0
+	for _, table := range tables {
+		columnCount += len(table.Columns)
+	}
+
+	result["status"] = "success"
+	result["message"] = fmt.Sprintf("成功更新字典，共 %d 个表，%d 个列", tableCount, columnCount)
+	result["tableCount"] = tableCount
+	result["columnCount"] = columnCount
+	result["connectionName"] = connectionName
+
+	return result, nil
+}
+
+// GetMetadataTables 获取元数据表列表
+func (a *App) GetMetadataTables(connectionID string) ([]map[string]interface{}, error) {
+	if a.storageManager == nil {
+		return []map[string]interface{}{}, nil
+	}
+
+	tables, err := a.storageManager.GetMetadataTables(connectionID)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []map[string]interface{}
+	for _, table := range tables {
+		result = append(result, map[string]interface{}{
+			"id":           table.ID,
+			"connectionId": table.ConnectionID,
+			"tableName":    table.TableName,
+			"tableComment": table.TableComment,
+			"tableSize":    table.TableSize,
+			"rowCount":     table.RowCount,
+			"columnCount":  table.ColumnCount,
+		})
+	}
+
+	return result, nil
+}
+
+// GetMetadataColumns 获取指定表的列信息
+func (a *App) GetMetadataColumns(tableID string) ([]map[string]interface{}, error) {
+	if a.storageManager == nil {
+		return []map[string]interface{}{}, nil
+	}
+
+	columns, err := a.storageManager.GetMetadataColumns(tableID)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []map[string]interface{}
+	for _, column := range columns {
+		result = append(result, map[string]interface{}{
+			"id":            column.ID,
+			"tableId":       column.TableID,
+			"columnName":    column.ColumnName,
+			"columnComment": column.ColumnComment,
+			"columnOrdinal": column.ColumnOrdinal,
+			"columnType":    column.ColumnType,
+		})
+	}
+
+	return result, nil
+}
+
 // Greet returns a greeting for the given name
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
