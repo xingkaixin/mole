@@ -1,13 +1,18 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useId } from "react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { DatabaseConfig } from "@/types"
+import { useId } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import type { DatabaseConfig } from "@/types";
 
 interface DatabaseConfigFormProps {
 	config: DatabaseConfig;
@@ -41,7 +46,13 @@ export function DatabaseConfigForm({
 				</Button>
 			</div>
 
-			<form onSubmit={(e) => { e.preventDefault(); onSaveConnection(); }} className="space-y-4">
+			<form
+				onSubmit={(e) => {
+					e.preventDefault();
+					onSaveConnection();
+				}}
+				className="space-y-4"
+			>
 				{/* 连接名称 */}
 				<div className="space-y-2">
 					<Label htmlFor={`${idPrefix}-name`}>连接别名</Label>
@@ -57,7 +68,10 @@ export function DatabaseConfigForm({
 				{/* 数据库类型 - 固定为 MySQL */}
 				<div className="space-y-2">
 					<Label htmlFor={`${idPrefix}-type`}>数据库类型</Label>
-					<Select value={config.type} onValueChange={(value) => onConfigChange("type", value)}>
+					<Select
+						value={config.type}
+						onValueChange={(value) => onConfigChange("type", value)}
+					>
 						<SelectTrigger id={`${idPrefix}-type`}>
 							<SelectValue />
 						</SelectTrigger>
@@ -165,9 +179,7 @@ export function DatabaseConfigForm({
 					<Button type="button" onClick={onTestConnection} variant="outline">
 						测试连接
 					</Button>
-					<Button type="submit">
-						{isAdding ? "添加" : "保存"}
-					</Button>
+					<Button type="submit">{isAdding ? "添加" : "保存"}</Button>
 				</div>
 			</form>
 		</Card>

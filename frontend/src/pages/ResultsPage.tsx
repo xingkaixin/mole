@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Calendar, Clock, Download, RefreshCw, Search } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { ModeToggle } from "@/components/mode-toggle";
-import { Search, Download, RefreshCw, Calendar, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import type { AnalysisResult } from "@/types";
 
 interface ResultsPageProps {
@@ -12,30 +12,16 @@ interface ResultsPageProps {
 	onGetAnalysisResults: (connectionId: string) => Promise<any[]>;
 }
 
-export function ResultsPage({ connectionId, onGetAnalysisResults }: ResultsPageProps) {
+export function ResultsPage({
+	connectionId,
+	onGetAnalysisResults,
+}: ResultsPageProps) {
 	const [results, setResults] = useState<AnalysisResult[]>([]);
 	const [filteredResults, setFilteredResults] = useState<AnalysisResult[]>([]);
 	const [searchTerm, setSearchTerm] = useState("");
 	const [loading, setLoading] = useState(true);
 
-	// 获取分析结果
-	useEffect(() => {
-		fetchResults();
-	}, [connectionId]);
-
-	// 过滤结果
-	useEffect(() => {
-		if (searchTerm.trim() === "") {
-			setFilteredResults(results);
-		} else {
-			const filtered = results.filter(result =>
-				result.tableName.toLowerCase().includes(searchTerm.toLowerCase())
-			);
-			setFilteredResults(filtered);
-		}
-	}, [results, searchTerm]);
-
-	const fetchResults = async () => {
+	const fetchResults = useCallback(async () => {
 		setLoading(true);
 		try {
 			if (!connectionId) {
@@ -48,17 +34,21 @@ export function ResultsPage({ connectionId, onGetAnalysisResults }: ResultsPageP
 			const backendResults = await onGetAnalysisResults(connectionId);
 
 			// 转换后端格式为前端格式
-			const convertedResults: AnalysisResult[] = backendResults.map((result: any) => ({
-				id: result.id,
-				databaseId: result.databaseId,
-				tableName: result.tableName,
-				rules: result.rules,
-				results: result.results,
-				status: result.status,
-				startedAt: new Date(result.startedAt),
-				completedAt: result.completedAt ? new Date(result.completedAt) : undefined,
-				duration: result.duration
-			}));
+			const convertedResults: AnalysisResult[] = backendResults.map(
+				(result: any) => ({
+					id: result.id,
+					databaseId: result.databaseId,
+					tableName: result.tableName,
+					rules: result.rules,
+					results: result.results,
+					status: result.status,
+					startedAt: new Date(result.startedAt),
+					completedAt: result.completedAt
+						? new Date(result.completedAt)
+						: undefined,
+					duration: result.duration,
+				}),
+			);
 
 			setResults(convertedResults);
 			setLoading(false);
@@ -66,7 +56,24 @@ export function ResultsPage({ connectionId, onGetAnalysisResults }: ResultsPageP
 			console.error("Failed to fetch analysis results:", error);
 			setLoading(false);
 		}
-	};
+	}, [connectionId, onGetAnalysisResults]);
+
+	// 获取分析结果
+	useEffect(() => {
+		fetchResults();
+	}, [fetchResults]);
+
+	// 过滤结果
+	useEffect(() => {
+		if (searchTerm.trim() === "") {
+			setFilteredResults(results);
+		} else {
+			const filtered = results.filter((result) =>
+				result.tableName.toLowerCase().includes(searchTerm.toLowerCase()),
+			);
+			setFilteredResults(filtered);
+		}
+	}, [results, searchTerm]);
 
 	const getStatusColor = (status: string) => {
 		switch (status) {
@@ -114,7 +121,7 @@ export function ResultsPage({ connectionId, onGetAnalysisResults }: ResultsPageP
 			month: "2-digit",
 			day: "2-digit",
 			hour: "2-digit",
-			minute: "2-digit"
+			minute: "2-digit",
 		});
 	};
 
@@ -125,7 +132,7 @@ export function ResultsPage({ connectionId, onGetAnalysisResults }: ResultsPageP
 		const url = URL.createObjectURL(dataBlob);
 		const link = document.createElement("a");
 		link.href = url;
-		link.download = `analysis-results-${new Date().toISOString().split('T')[0]}.json`;
+		link.download = `analysis-results-${new Date().toISOString().split("T")[0]}.json`;
 		document.body.appendChild(link);
 		link.click();
 		document.body.removeChild(link);
@@ -164,11 +171,7 @@ export function ResultsPage({ connectionId, onGetAnalysisResults }: ResultsPageP
 						</span>
 					</div>
 					<div className="flex gap-2">
-						<Button
-							variant="outline"
-							onClick={fetchResults}
-							disabled={loading}
-						>
+						<Button variant="outline" onClick={fetchResults} disabled={loading}>
 							<RefreshCw className="h-4 w-4 mr-2" />
 							刷新
 						</Button>

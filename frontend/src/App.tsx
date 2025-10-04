@@ -18,22 +18,21 @@ import type {
 	TableMetadata,
 } from "@/types";
 import {
-	AnalyzeTables,
+	CancelTask,
 	ConnectDatabase,
+	DeleteAnalysisResult,
 	DeleteDatabaseConnection,
 	GetAnalysisResults,
 	GetDatabaseConnections,
 	GetTableSelections,
 	GetTables,
 	GetTablesMetadata,
-	SaveDatabaseConnection,
-	SaveTableSelections,
-	TestDatabaseConnection,
-	StartAnalysisTasks,
-	DeleteAnalysisResult,
 	GetTaskStatus,
 	GetTasksByDatabase,
-	CancelTask,
+	SaveDatabaseConnection,
+	SaveTableSelections,
+	StartAnalysisTasks,
+	TestDatabaseConnection,
 } from "../wailsjs/go/backend/App.js";
 
 function App() {
@@ -57,7 +56,7 @@ function App() {
 	const [tables, setTables] = useState<TableInfo[]>([]);
 	const [selectedTables, setSelectedTables] = useState<string[]>([]);
 	const [tempSelectedTables, setTempSelectedTables] = useState<string[]>([]);
-	const [analysisResults, setAnalysisResults] = useState<RuleResult[]>([]);
+	const [_analysisResults, _setAnalysisResults] = useState<RuleResult[]>([]);
 	const [isAddingConnection, setIsAddingConnection] = useState(false);
 
 	// 从后端存储加载保存的连接
@@ -152,7 +151,7 @@ function App() {
 			const duplicatedConnection: DatabaseConfig = {
 				...connection,
 				id: Date.now().toString(), // 生成新的ID
-				name: `${connection.name} (副本)`, // 添加副本后缀
+				name: `${connection.name} _duplicate`, // 添加duplicate后缀
 			};
 
 			// 保存到后端存储
@@ -319,7 +318,10 @@ function App() {
 
 		try {
 			// 使用新的并发分析系统
-			const taskId = await StartAnalysisTasks(currentConnection.id, selectedTables);
+			const taskId = await StartAnalysisTasks(
+				currentConnection.id,
+				selectedTables,
+			);
 			console.log("Analysis task started:", taskId);
 			toast.success("分析任务已启动");
 		} catch (error) {
@@ -415,7 +417,7 @@ function App() {
 		setPreviousStep(null);
 	};
 
-	const handleReanalyze = () => {
+	const _handleReanalyze = () => {
 		setCurrentStep("analysis_tables");
 	};
 

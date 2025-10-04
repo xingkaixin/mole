@@ -1,7 +1,8 @@
+import { ArrowUpDown, Database, Search } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
 	Table,
@@ -11,7 +12,6 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { ArrowUpDown, Search, Database } from "lucide-react";
 
 interface ColumnData {
 	name: string;
@@ -19,32 +19,39 @@ interface ColumnData {
 }
 
 interface AnalysisResultViewerProps {
-	result: any;
+	result: Record<string, unknown>;
 	onBack: () => void;
 }
 
-export function AnalysisResultViewer({ result, onBack }: AnalysisResultViewerProps) {
+export function AnalysisResultViewer({
+	result,
+	onBack,
+}: AnalysisResultViewerProps) {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
 	// 解析结果数据
-	const analysisData = result.results as {
-		row_count?: number;
-		non_null_rate?: Record<string, number>;
-	} | undefined;
+	const analysisData = result.results as
+		| {
+				row_count?: number;
+				non_null_rate?: Record<string, number>;
+		  }
+		| undefined;
 
 	// 获取行数
 	const rowCount = analysisData?.row_count || 0;
 
 	// 将non_null_rate转换为数组格式
-	const columns: ColumnData[] = Object.entries(analysisData?.non_null_rate || {}).map(([name, nonNullRate]) => ({
+	const columns: ColumnData[] = Object.entries(
+		analysisData?.non_null_rate || {},
+	).map(([name, nonNullRate]) => ({
 		name,
 		nonNullRate: Math.round(nonNullRate * 100), // 转换为百分比
 	}));
 
 	// 搜索过滤
-	const filteredColumns = columns.filter(column =>
-		column.name.toLowerCase().includes(searchQuery.toLowerCase())
+	const filteredColumns = columns.filter((column) =>
+		column.name.toLowerCase().includes(searchQuery.toLowerCase()),
 	);
 
 	// 排序
@@ -56,11 +63,11 @@ export function AnalysisResultViewer({ result, onBack }: AnalysisResultViewerPro
 
 	// 切换排序
 	const toggleSort = () => {
-		setSortOrder(prev => prev === "asc" ? "desc" : "asc");
+		setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
 	};
 
 	// 格式化时间
-	const formatDate = (date: Date) => {
+	const _formatDate = (date: Date) => {
 		return new Date(date).toLocaleString("zh-CN", {
 			year: "numeric",
 			month: "2-digit",
@@ -153,8 +160,13 @@ export function AnalysisResultViewer({ result, onBack }: AnalysisResultViewerPro
 									</TableCell>
 									<TableCell className="text-right">
 										<Badge
-											variant={column.nonNullRate >= 90 ? "default" :
-													 column.nonNullRate >= 70 ? "secondary" : "destructive"}
+											variant={
+												column.nonNullRate >= 90
+													? "default"
+													: column.nonNullRate >= 70
+														? "secondary"
+														: "destructive"
+											}
 										>
 											{column.nonNullRate}%
 										</Badge>
@@ -163,8 +175,11 @@ export function AnalysisResultViewer({ result, onBack }: AnalysisResultViewerPro
 										<div className="w-full bg-gray-200 rounded-full h-2">
 											<div
 												className={`h-2 rounded-full transition-all duration-300 ${
-													column.nonNullRate >= 90 ? "bg-green-500" :
-													column.nonNullRate >= 70 ? "bg-yellow-500" : "bg-red-500"
+													column.nonNullRate >= 90
+														? "bg-green-500"
+														: column.nonNullRate >= 70
+															? "bg-yellow-500"
+															: "bg-red-500"
 												}`}
 												style={{ width: `${column.nonNullRate}%` }}
 											/>

@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { Database, RefreshCw, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, RefreshCw, Database } from "lucide-react";
 
 interface Task {
 	id: string;
@@ -41,7 +41,7 @@ export function TaskProgressPage({
 }: TaskProgressPageProps) {
 	const [databaseTasks, setDatabaseTasks] = useState<DatabaseTask[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
-	const [connections, setConnections] = useState<any[]>([]);
+	const [_connections, setConnections] = useState<any[]>([]);
 
 	// 获取数据库连接信息
 	const fetchConnections = useCallback(async () => {
@@ -100,8 +100,10 @@ export function TaskProgressPage({
 
 	// 设置定时轮询，每3秒更新一次任务状态
 	useEffect(() => {
-		const hasActiveTasks = databaseTasks.some(db =>
-			db.tasks.some(task => task.status === "running" || task.status === "pending")
+		const hasActiveTasks = databaseTasks.some((db) =>
+			db.tasks.some(
+				(task) => task.status === "running" || task.status === "pending",
+			),
 		);
 
 		if (!hasActiveTasks) return;
@@ -165,7 +167,7 @@ export function TaskProgressPage({
 	};
 
 	// 获取状态颜色
-	const getStatusColor = (status: string) => {
+	const _getStatusColor = (status: string) => {
 		switch (status) {
 			case "pending":
 				return "text-gray-500";
@@ -215,12 +217,8 @@ export function TaskProgressPage({
 						<Database className="w-16 h-16 mx-auto" />
 					</div>
 					<h3 className="text-lg font-medium text-gray-900 mb-2">暂无任务</h3>
-					<p className="text-gray-500 mb-4">
-						当前没有进行中或待执行的分析任务
-					</p>
-					<Button onClick={onGoHome}>
-						开始新的分析
-					</Button>
+					<p className="text-gray-500 mb-4">当前没有进行中或待执行的分析任务</p>
+					<Button onClick={onGoHome}>开始新的分析</Button>
 				</Card>
 			) : (
 				<div className="space-y-6">
@@ -229,10 +227,10 @@ export function TaskProgressPage({
 							<div className="flex items-center justify-between mb-4">
 								<div className="flex items-center space-x-3">
 									<Database className="w-5 h-5 text-blue-600" />
-									<h2 className="text-xl font-semibold">{dbTask.databaseName}</h2>
-									<Badge variant="outline">
-										{dbTask.tasks.length} 个任务
-									</Badge>
+									<h2 className="text-xl font-semibold">
+										{dbTask.databaseName}
+									</h2>
+									<Badge variant="outline">{dbTask.tasks.length} 个任务</Badge>
 								</div>
 							</div>
 
@@ -247,7 +245,8 @@ export function TaskProgressPage({
 														{getStatusText(task.status)}
 													</Badge>
 												</div>
-												{(task.status === "running" || task.status === "pending") && (
+												{(task.status === "running" ||
+													task.status === "pending") && (
 													<Button
 														variant="ghost"
 														size="sm"

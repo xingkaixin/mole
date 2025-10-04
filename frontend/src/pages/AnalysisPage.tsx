@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
+import type { AnalysisTask } from "@/components/AnalysisProgress";
 import { AnalysisProgress } from "@/components/AnalysisProgress";
 import { ModeToggle } from "@/components/mode-toggle";
-import type { AnalysisTask } from "@/components/AnalysisProgress";
 
 interface AnalysisPageProps {
 	selectedTablesCount: number;
@@ -53,8 +53,8 @@ export function AnalysisPage({
 	useEffect(() => {
 		if (tasks.length === 0) return;
 
-		const hasActiveTasks = tasks.some(task =>
-			task.status === "running" || task.status === "pending"
+		const hasActiveTasks = tasks.some(
+			(task) => task.status === "running" || task.status === "pending",
 		);
 
 		if (!hasActiveTasks) return;
@@ -77,8 +77,8 @@ export function AnalysisPage({
 	};
 
 	const handleCancelAll = async () => {
-		const activeTasks = tasks.filter(task =>
-			task.status === "running" || task.status === "pending"
+		const activeTasks = tasks.filter(
+			(task) => task.status === "running" || task.status === "pending",
 		);
 
 		for (const task of activeTasks) {

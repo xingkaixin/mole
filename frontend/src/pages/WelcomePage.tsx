@@ -1,5 +1,6 @@
 import { Plus } from "lucide-react";
 import { useState } from "react";
+import { DatabaseCard } from "@/components/database-card";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -9,13 +10,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { DatabaseCard } from "@/components/database-card";
 import type { DatabaseConfig } from "@/types";
 
 interface WelcomePageProps {
@@ -32,14 +26,14 @@ export function WelcomePage({
 	onAddConnection,
 	onEditConnection,
 	onDeleteConnection,
-	onSelectConnection,
+	onSelectConnection: _onSelectConnection,
 	onDuplicateConnection,
 }: WelcomePageProps) {
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [connectionToDelete, setConnectionToDelete] =
 		useState<DatabaseConfig | null>(null);
 
-	const handleDeleteClick = (connection: DatabaseConfig) => {
+	const _handleDeleteClick = (connection: DatabaseConfig) => {
 		setConnectionToDelete(connection);
 		setDeleteDialogOpen(true);
 	};
@@ -62,14 +56,19 @@ export function WelcomePage({
 		<div className="p-8">
 			{/* Header */}
 			<div className="mb-8">
-				<h1 className="text-3xl font-bold mb-2 text-balance">数据探查工具 - 帮助您快速分析数据库表结构、数据质量和业务规则</h1>
-				<p className="text-muted-foreground text-pretty">管理数据库连接、执行分析任务并查看详细报告</p>
+				<h1 className="text-3xl font-bold mb-2 text-balance">
+					数据探查工具 - 帮助您快速分析数据库表结构、数据质量和业务规则
+				</h1>
+				<p className="text-muted-foreground text-pretty">
+					管理数据库连接、执行分析任务并查看详细报告
+				</p>
 			</div>
 
 			{/* Database Connections Grid */}
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 				{!connections || connections.length === 0 ? (
 					<button
+						type="button"
 						onClick={onAddConnection}
 						className="aspect-square border-2 border-dashed border-border rounded-lg flex items-center justify-center hover:border-primary hover:bg-secondary/50 transition-colors group"
 					>
@@ -94,6 +93,7 @@ export function WelcomePage({
 							/>
 						))}
 						<button
+							type="button"
 							onClick={onAddConnection}
 							className="aspect-square border-2 border-dashed border-border rounded-lg flex items-center justify-center hover:border-primary hover:bg-secondary/50 transition-colors group"
 						>
@@ -101,7 +101,9 @@ export function WelcomePage({
 								<div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground group-hover:border-primary mx-auto mb-3 flex items-center justify-center transition-colors">
 									<Plus className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
 								</div>
-								<p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">添加连接</p>
+								<p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+									添加连接
+								</p>
 							</div>
 						</button>
 					</>

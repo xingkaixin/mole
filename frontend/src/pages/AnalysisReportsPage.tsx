@@ -1,13 +1,29 @@
+import {
+	Calendar,
+	CheckCircle,
+	ChevronDown,
+	Clock,
+	Database,
+	FileText,
+	Filter,
+	Loader2,
+	Search,
+	Trash2,
+	XCircle,
+} from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { AnalysisResultViewer } from "@/components/AnalysisResultViewer";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
-import { Trash2, Search, FileText, Calendar, Database, Clock, CheckCircle, XCircle, Loader2, Filter, ChevronDown } from "lucide-react";
-import type { AnalysisResult } from "@/types";
-import { AnalysisResultViewer } from "@/components/AnalysisResultViewer";
 
 interface AnalysisReportsPageProps {
 	onBack: () => void;
@@ -58,8 +74,9 @@ export function AnalysisReportsPage({
 				// 确保results不为null或undefined
 				const validResults = results || [];
 				// 按创建时间倒序排列，新的结果在前面
-				const sortedResults = validResults.sort((a, b) =>
-					new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
+				const sortedResults = validResults.sort(
+					(a, b) =>
+						new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
 				);
 				setAnalysisResults(sortedResults);
 				setFilteredResults(sortedResults);
@@ -82,15 +99,22 @@ export function AnalysisReportsPage({
 
 		// 按数据库连接过滤
 		if (selectedDatabaseId !== "all") {
-			filtered = filtered.filter(result => result.databaseId === selectedDatabaseId);
+			filtered = filtered.filter(
+				(result) => result.databaseId === selectedDatabaseId,
+			);
 		}
 
 		// 按搜索关键词过滤
 		if (searchQuery.trim()) {
-			filtered = filtered.filter(result =>
-				result.tableName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				result.rules.some((rule: string) => rule.toLowerCase().includes(searchQuery.toLowerCase())) ||
-				(result.databaseName && result.databaseName.toLowerCase().includes(searchQuery.toLowerCase()))
+			filtered = filtered.filter(
+				(result) =>
+					result.tableName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+					result.rules.some((rule: string) =>
+						rule.toLowerCase().includes(searchQuery.toLowerCase()),
+					) ||
+					result.databaseName
+						?.toLowerCase()
+						.includes(searchQuery.toLowerCase()),
 			);
 		}
 
@@ -150,19 +174,19 @@ export function AnalysisReportsPage({
 	// 删除分析结果
 	const handleDeleteResult = async (resultId: string) => {
 		try {
-			setDeletingIds(prev => new Set(prev).add(resultId));
+			setDeletingIds((prev) => new Set(prev).add(resultId));
 			await onDeleteAnalysisResult(resultId);
 
 			// 从前端状态中移除
-			setAnalysisResults(prev => prev.filter(r => r.id !== resultId));
-			setFilteredResults(prev => prev.filter(r => r.id !== resultId));
+			setAnalysisResults((prev) => prev.filter((r) => r.id !== resultId));
+			setFilteredResults((prev) => prev.filter((r) => r.id !== resultId));
 
 			toast.success("分析结果已删除");
 		} catch (error) {
 			console.error("Failed to delete analysis result:", error);
 			toast.error("删除分析结果失败");
 		} finally {
-			setDeletingIds(prev => {
+			setDeletingIds((prev) => {
 				const newSet = new Set(prev);
 				newSet.delete(resultId);
 				return newSet;
@@ -218,8 +242,9 @@ export function AnalysisReportsPage({
 										<span>
 											{selectedDatabaseId === "all"
 												? "所有数据库连接"
-												: databaseConnections.find((c: any) => c.id === selectedDatabaseId)?.name || selectedDatabaseId
-											}
+												: databaseConnections.find(
+														(c: any) => c.id === selectedDatabaseId,
+													)?.name || selectedDatabaseId}
 										</span>
 									</div>
 									<ChevronDown className="w-4 h-4" />
@@ -236,7 +261,9 @@ export function AnalysisReportsPage({
 									<DropdownMenuItem
 										key={conn.id}
 										onClick={() => setSelectedDatabaseId(conn.id)}
-										className={selectedDatabaseId === conn.id ? "bg-accent" : ""}
+										className={
+											selectedDatabaseId === conn.id ? "bg-accent" : ""
+										}
 									>
 										{conn.name}
 									</DropdownMenuItem>
@@ -249,7 +276,8 @@ export function AnalysisReportsPage({
 				<p className="text-sm text-muted-foreground">
 					共 {filteredResults.length} 个分析结果
 					{searchQuery && ` (搜索: "${searchQuery}")`}
-					{selectedDatabaseId !== "all" && ` (数据库: ${databaseConnections.find((c: any) => c.id === selectedDatabaseId)?.name || selectedDatabaseId})`}
+					{selectedDatabaseId !== "all" &&
+						` (数据库: ${databaseConnections.find((c: any) => c.id === selectedDatabaseId)?.name || selectedDatabaseId})`}
 				</p>
 			</div>
 
@@ -266,18 +294,25 @@ export function AnalysisReportsPage({
 						暂无分析结果
 					</h3>
 					<p className="text-gray-500">
-						{searchQuery ? "没有找到匹配的分析结果" : "还没有执行过任何分析任务"}
+						{searchQuery
+							? "没有找到匹配的分析结果"
+							: "还没有执行过任何分析任务"}
 					</p>
 				</div>
 			) : (
 				/* 结果列表 */
 				<div className="space-y-4">
 					{filteredResults.map((result) => (
-						<Card key={result.id} className="p-4 hover:shadow-md transition-shadow">
+						<Card
+							key={result.id}
+							className="p-4 hover:shadow-md transition-shadow"
+						>
 							<div className="flex items-center justify-between">
 								<div className="flex-1">
 									<div className="flex items-center gap-3 mb-2">
-										<h3 className="font-semibold text-lg">{result.tableName}</h3>
+										<h3 className="font-semibold text-lg">
+											{result.tableName}
+										</h3>
 										{result.databaseName && (
 											<Badge variant="secondary" className="text-xs">
 												<Database className="w-3 h-3 mr-1" />
@@ -287,10 +322,15 @@ export function AnalysisReportsPage({
 										<Badge className={getStatusColor(result.status)}>
 											{getStatusIcon(result.status)}
 											<span className="ml-1">
-												{result.status === "completed" ? "已完成" :
-												 result.status === "running" ? "运行中" :
-												 result.status === "failed" ? "失败" :
-												 result.status === "cancelled" ? "已取消" : "等待中"}
+												{result.status === "completed"
+													? "已完成"
+													: result.status === "running"
+														? "运行中"
+														: result.status === "failed"
+															? "失败"
+															: result.status === "cancelled"
+																? "已取消"
+																: "等待中"}
 											</span>
 										</Badge>
 									</div>

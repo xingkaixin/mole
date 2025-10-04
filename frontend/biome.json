@@ -15,8 +15,16 @@
   "linter": {
     "enabled": true,
     "rules": {
+      "recommended": true,
       "suspicious": {
-        "noUnknownAtRules": "off"
+        "noUnknownAtRules": "off",
+        "noExplicitAny": "off"
+      },
+      "correctness": {
+        "noUnusedFunctionParameters": "off"
+      },
+      "style": {
+        "useImportType": "off"
       }
     }
   },

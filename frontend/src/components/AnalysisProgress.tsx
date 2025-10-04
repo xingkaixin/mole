@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 
 export interface AnalysisTask {
@@ -20,7 +20,7 @@ interface AnalysisProgressProps {
 }
 
 export function AnalysisProgress({
-	selectedTablesCount,
+	selectedTablesCount: _selectedTablesCount,
 	tasks = [],
 	isLoading = false,
 	onCancelTask,
@@ -35,19 +35,22 @@ export function AnalysisProgress({
 			return;
 		}
 
-		const completedTasks = tasks.filter(task => task.status === "completed").length;
+		const completedTasks = tasks.filter(
+			(task) => task.status === "completed",
+		).length;
 		const totalTasks = tasks.length;
-		const newProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+		const newProgress =
+			totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 		setProgress(newProgress);
 	}, [tasks]);
 
 	// 统计任务状态
 	const stats = {
 		total: tasks.length,
-		completed: tasks.filter(task => task.status === "completed").length,
-		running: tasks.filter(task => task.status === "running").length,
-		pending: tasks.filter(task => task.status === "pending").length,
-		failed: tasks.filter(task => task.status === "failed").length,
+		completed: tasks.filter((task) => task.status === "completed").length,
+		running: tasks.filter((task) => task.status === "running").length,
+		pending: tasks.filter((task) => task.status === "pending").length,
+		failed: tasks.filter((task) => task.status === "failed").length,
 	};
 
 	// 格式化状态文本
@@ -115,15 +118,21 @@ export function AnalysisProgress({
 					<div className="text-sm text-muted-foreground">总任务</div>
 				</div>
 				<div className="text-center">
-					<div className="text-2xl font-bold text-blue-600">{stats.running}</div>
+					<div className="text-2xl font-bold text-blue-600">
+						{stats.running}
+					</div>
 					<div className="text-sm text-muted-foreground">进行中</div>
 				</div>
 				<div className="text-center">
-					<div className="text-2xl font-bold text-green-600">{stats.completed}</div>
+					<div className="text-2xl font-bold text-green-600">
+						{stats.completed}
+					</div>
 					<div className="text-sm text-muted-foreground">已完成</div>
 				</div>
 				<div className="text-center">
-					<div className="text-2xl font-bold text-gray-500">{stats.pending}</div>
+					<div className="text-2xl font-bold text-gray-500">
+						{stats.pending}
+					</div>
 					<div className="text-sm text-muted-foreground">等待中</div>
 				</div>
 				<div className="text-center">
@@ -163,7 +172,9 @@ export function AnalysisProgress({
 									{/* 状态 */}
 									<div className="col-span-3">
 										<div className="flex items-center space-x-2">
-											<span className={`text-sm ${getStatusColor(task.status)}`}>
+											<span
+												className={`text-sm ${getStatusColor(task.status)}`}
+											>
 												{getStatusText(task.status)}
 											</span>
 											{task.status === "running" && (
@@ -175,7 +186,9 @@ export function AnalysisProgress({
 									{/* 进度 */}
 									<div className="col-span-2">
 										<div className="flex items-center space-x-2">
-											<span className="text-sm w-10 text-right">{task.progress}%</span>
+											<span className="text-sm w-10 text-right">
+												{task.progress}%
+											</span>
 											<div className="flex-1 bg-gray-200 rounded-full h-2">
 												<div
 													className="bg-blue-600 h-2 rounded-full transition-all duration-300"
@@ -207,15 +220,25 @@ export function AnalysisProgress({
 				<div className="text-center py-12">
 					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
 					<p className="text-lg">正在加载任务状态...</p>
-					<p className="text-sm text-muted-foreground mt-2">
-						请稍候
-					</p>
+					<p className="text-sm text-muted-foreground mt-2">请稍候</p>
 				</div>
 			) : (
 				<div className="text-center py-12">
 					<div className="text-gray-400 mb-4">
-						<svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+						<svg
+							className="w-12 h-12 mx-auto"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+							aria-label="No tasks"
+						>
+							<title>No analysis tasks</title>
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								strokeWidth={2}
+								d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+							/>
 						</svg>
 					</div>
 					<p className="text-lg text-gray-600">暂无分析任务</p>
