@@ -22,21 +22,21 @@ const (
 
 // AnalysisTask 分析任务
 type AnalysisTask struct {
-	ID             string          `json:"id"`
-	TableName      string          `json:"table_name"`
-	DatabaseID     string          `json:"database_id"`
-	DatabaseConfig *DatabaseConfig `json:"database_config"`
-	Status         TaskStatus      `json:"status"`
-	Progress       float64         `json:"progress"` // 0-100
-	ErrorMessage   string          `json:"error_message"`
-	StartedAt      *time.Time      `json:"started_at"`
-	CompletedAt    *time.Time      `json:"completed_at"`
-	Duration       time.Duration   `json:"duration"`
-	Result         interface{}     `json:"result"`
-	TaskID         string          `json:"task_id"`         // 新增：任务ID
-	TableID        string          `json:"table_id"`        // 新增：表ID
-	TaskTableID    string          `json:"task_table_id"`   // 新增：任务表关联ID
-	ctx            context.Context `json:"-"`
+	ID             string             `json:"id"`
+	TableName      string             `json:"table_name"`
+	DatabaseID     string             `json:"database_id"`
+	DatabaseConfig *DatabaseConfig    `json:"database_config"`
+	Status         TaskStatus         `json:"status"`
+	Progress       float64            `json:"progress"` // 0-100
+	ErrorMessage   string             `json:"error_message"`
+	StartedAt      *time.Time         `json:"started_at"`
+	CompletedAt    *time.Time         `json:"completed_at"`
+	Duration       time.Duration      `json:"duration"`
+	Result         interface{}        `json:"result"`
+	TaskID         string             `json:"task_id"`       // 新增：任务ID
+	TableID        string             `json:"table_id"`      // 新增：表ID
+	TaskTableID    string             `json:"task_table_id"` // 新增：任务表关联ID
+	ctx            context.Context    `json:"-"`
 	cancel         context.CancelFunc `json:"-"`
 }
 

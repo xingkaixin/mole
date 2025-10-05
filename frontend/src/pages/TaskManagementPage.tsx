@@ -285,7 +285,7 @@ export function TaskManagementPage({ onNavigateToAnalysisDetail }: TaskManagemen
       );
 
       // 直接获取增强的分析结果
-      let result;
+      let result: any;
       try {
         console.log("正在获取增强分析结果，taskId:", selectedTask.id, "tableId:", tableId);
         const enhancedResult = await GetEnhancedAnalysisResult(selectedTask.id, tableId);

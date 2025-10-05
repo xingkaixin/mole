@@ -16,16 +16,12 @@ import type {
   TableMetadata,
 } from "@/types";
 import {
-  CancelTask,
   ConnectDatabase,
   DeleteDatabaseConnection,
-  GetAnalysisResults,
   GetDatabaseConnections,
   GetTableSelections,
   GetTables,
   GetTablesMetadata,
-  GetTaskStatus,
-  GetTasksByDatabase,
   SaveDatabaseConnection,
   SaveTableSelections,
   StartAnalysisTasks,

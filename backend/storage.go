@@ -475,7 +475,7 @@ func (sm *StorageManager) GetAllAnalysisResults() ([]*AnalysisResult, error) {
 // GetAnalysisResult 获取单个分析结果
 func (sm *StorageManager) GetAnalysisResult(resultID string) (*AnalysisResult, error) {
 	query := `
-	SELECT id, connection_id, table_name, rules, results, status, started_at, completed_at, duration
+	SELECT id, table_id, table_name, rules, results, status, started_at, completed_at, duration
 	FROM analysis_results
 	WHERE id = ?
 	`
@@ -521,8 +521,8 @@ func (sm *StorageManager) DeleteAnalysisResult(resultID string) error {
 // EnhancedAnalysisResult 增强的分析结果，包含完整的元数据信息
 type EnhancedAnalysisResult struct {
 	*AnalysisResult
-	TableComment   string                    `json:"tableComment"`
-	ColumnsInfo    []*MetadataColumnInfo     `json:"columnsInfo"`
+	TableComment string                `json:"tableComment"`
+	ColumnsInfo  []*MetadataColumnInfo `json:"columnsInfo"`
 }
 
 // GetEnhancedAnalysisResult 获取增强的分析结果（包含完整元数据）
@@ -538,16 +538,11 @@ func (sm *StorageManager) GetEnhancedAnalysisResult(resultID string) (*EnhancedA
 		return nil, err
 	}
 
-	logger.LogInfo("ENHANCED_RESULT", fmt.Sprintf("获取到基本分析结果 - DatabaseID: %s, TableName: %s", result.DatabaseID, result.TableName))
+	logger.LogInfo("ENHANCED_RESULT", fmt.Sprintf("获取到基本分析结果 - TableID: %s, TableName: %s", result.DatabaseID, result.TableName))
 
-	// 根据表名获取表ID
-	tableID, err := sm.getTableIDByName(result.DatabaseID, result.TableName)
-	if err != nil {
-		logger.LogError("ENHANCED_RESULT", fmt.Sprintf("获取表ID失败 - DatabaseID: %s, TableName: %s, Error: %s", result.DatabaseID, result.TableName, err.Error()))
-		return nil, fmt.Errorf("failed to get table ID: %w", err)
-	}
-
-	logger.LogInfo("ENHANCED_RESULT", fmt.Sprintf("获取到表ID - tableID: %s", tableID))
+	// result.DatabaseID 现在就是 table_id，不需要再次查询
+	tableID := result.DatabaseID
+	logger.LogInfo("ENHANCED_RESULT", fmt.Sprintf("使用表ID - tableID: %s", tableID))
 
 	// 获取表信息
 	tableInfo, err := sm.getTableInfo(tableID)
@@ -578,23 +573,6 @@ func (sm *StorageManager) GetEnhancedAnalysisResult(resultID string) (*EnhancedA
 
 	logger.LogInfo("ENHANCED_RESULT", "增强分析结果构建完成")
 	return enhancedResult, nil
-}
-
-// getTableIDByName 根据连接ID和表名获取表ID
-func (sm *StorageManager) getTableIDByName(connectionID, tableName string) (string, error) {
-	query := `
-		SELECT id
-		FROM metadata_tables
-		WHERE connection_id = ? AND table_name = ?
-	`
-
-	var tableID string
-	err := sm.db.QueryRow(query, connectionID, tableName).Scan(&tableID)
-	if err != nil {
-		return "", err
-	}
-
-	return tableID, nil
 }
 
 // getTableInfo 获取表信息

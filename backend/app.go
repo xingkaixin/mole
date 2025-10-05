@@ -923,7 +923,7 @@ func (a *App) GetTableAnalysisResult(taskID, taskTableID string) (map[string]int
 		"rowCount":       targetTable.RowCount,
 		"tableSize":      targetTable.TableSize,
 		"columnCount":    targetTable.ColumnCount,
-		"resultId":       result.ID,  // 添加结果ID用于获取增强数据
+		"resultId":       result.ID, // 添加结果ID用于获取增强数据
 	}
 
 	logger.LogInfo("GET_RESULT", fmt.Sprintf("返回响应 - status=%s, rowCount=%d, columnCount=%d", response["status"], response["rowCount"], response["columnCount"]))

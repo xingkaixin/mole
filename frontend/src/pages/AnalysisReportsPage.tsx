@@ -43,7 +43,7 @@ export function AnalysisReportsPage({
   const [filteredResults, setFilteredResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedResult, setSelectedResult] = useState<any | null>(null);
+  const [_selectedResult, setSelectedResult] = useState<any | null>(null);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [databaseConnections, setDatabaseConnections] = useState<any[]>([]);
   const [selectedDatabaseId, setSelectedDatabaseId] = useState<string>("all");

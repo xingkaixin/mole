@@ -206,12 +206,12 @@ func (dm *DatabaseManager) GetTablesMetadata(tableNames []string) (map[string]ma
 
 // TableMetadata 表元数据结构
 type TableMetadata struct {
-	TableName    string           `json:"tableName"`
-	Comment      string           `json:"comment"`
-	DataSize     int64            `json:"dataSize"`
-	RowCount     int64            `json:"rowCount"`
-	ColumnCount  int              `json:"columnCount"`
-	Columns      []ColumnMetadata `json:"columns"`
+	TableName   string           `json:"tableName"`
+	Comment     string           `json:"comment"`
+	DataSize    int64            `json:"dataSize"`
+	RowCount    int64            `json:"rowCount"`
+	ColumnCount int              `json:"columnCount"`
+	Columns     []ColumnMetadata `json:"columns"`
 }
 
 // ColumnMetadata 列元数据结构
