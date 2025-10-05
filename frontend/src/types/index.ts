@@ -57,6 +57,16 @@ export interface TableInfo {
   exists: boolean;
 }
 
+export interface TableSelectionPageProps {
+  tables: TableInfo[];
+  selectedTables: string[];
+  onTableToggle: (table: string) => void;
+  onSelectAll: () => void;
+  onDeselectAll: () => void;
+  onBack: () => void;
+  onConfirmSelection: () => void;
+}
+
 export interface TableMetadata {
   row_count?: number;
   data_size?: number;

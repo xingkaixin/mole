@@ -3,9 +3,7 @@ import { toast } from "sonner";
 import { Sidebar } from "@/components/Sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { AnalysisDetailPage } from "@/pages/AnalysisDetailPage";
-import { AnalysisTablesPage } from "@/pages/AnalysisTablesPage";
 import { ConfigPage } from "@/pages/ConfigPage";
-import { TableSelectionPage } from "@/pages/TablesPage";
 import { TaskManagementPage } from "@/pages/TaskManagementPage";
 import { WelcomePage } from "@/pages/WelcomePage";
 import type {
@@ -21,10 +19,7 @@ import {
   GetDatabaseConnections,
   GetTableSelections,
   GetTables,
-  GetTablesMetadata,
   SaveDatabaseConnection,
-  SaveTableSelections,
-  StartAnalysisTasks,
   TestDatabaseConnection,
 } from "../wailsjs/go/backend/App.js";
 
@@ -218,114 +213,6 @@ function App() {
     }
   };
 
-  const toggleTableSelection = async (table: string) => {
-    const newSelectedTables = selectedTables.includes(table)
-      ? selectedTables.filter((t) => t !== table)
-      : [...selectedTables, table];
-
-    setSelectedTables(newSelectedTables);
-
-    // 保存选择状态到后端
-    try {
-      await SaveTableSelections(newSelectedTables);
-    } catch (error) {
-      console.warn("Failed to save table selections:", error);
-    }
-  };
-
-  // 临时表选择切换 - 只在表选择页面使用，不立即保存
-  const toggleTempTableSelection = (table: string) => {
-    const newTempSelectedTables = tempSelectedTables.includes(table)
-      ? tempSelectedTables.filter((t) => t !== table)
-      : [...tempSelectedTables, table];
-
-    setTempSelectedTables(newTempSelectedTables);
-  };
-
-  const _handleSelectAll = async () => {
-    // 只选择存在的表
-    const existingTables = tables
-      .filter((table) => table.exists)
-      .map((table) => table.name);
-
-    setSelectedTables(existingTables);
-
-    // 保存选择状态到后端
-    try {
-      await SaveTableSelections(existingTables);
-    } catch (error) {
-      console.warn("Failed to save table selections:", error);
-    }
-  };
-
-  const _handleDeselectAll = async () => {
-    setSelectedTables([]);
-
-    // 保存选择状态到后端
-    try {
-      await SaveTableSelections([]);
-    } catch (error) {
-      console.warn("Failed to save table selections:", error);
-    }
-  };
-
-  // 临时批量选择 - 只在表选择页面使用
-  const handleTempSelectAll = () => {
-    // 只选择存在的表
-    const existingTables = tables
-      .filter((table) => table.exists)
-      .map((table) => table.name);
-
-    setTempSelectedTables(existingTables);
-  };
-
-  const handleTempDeselectAll = () => {
-    setTempSelectedTables([]);
-  };
-
-  // 加载表元数据
-  const handleLoadMetadata = async (tableNames: string[]) => {
-    try {
-      const metadata = await GetTablesMetadata(tableNames);
-      return metadata;
-    } catch (error) {
-      console.error("Failed to load table metadata:", error);
-      // 返回空的元数据对象
-      const emptyMetadata: Record<string, TableMetadata> = {};
-      tableNames.forEach((tableName) => {
-        emptyMetadata[tableName] = { error: "Failed to load metadata" };
-      });
-      return emptyMetadata;
-    }
-  };
-
-  const startAnalysis = async () => {
-    if (selectedTables.length === 0) {
-      toast.error("请选择至少一个表进行分析");
-      return;
-    }
-
-    if (!currentConnection) {
-      toast.error("请先选择数据库连接");
-      return;
-    }
-
-    setCurrentStep("analysis");
-
-    try {
-      // 使用新的并发分析系统
-      const taskId = await StartAnalysisTasks(
-        currentConnection.id,
-        selectedTables
-      );
-      console.log("Analysis task started:", taskId);
-      toast.success("分析任务已启动");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error));
-      setCurrentStep("analysis_tables");
-    }
-  };
-
   const handleAddConnection = () => {
     setDbConfig({
       id: "",
@@ -393,28 +280,6 @@ function App() {
     } else {
       setCurrentStep("welcome");
     }
-  };
-
-  const handleAddTables = () => {
-    setPreviousStep(currentStep);
-    setTempSelectedTables([...selectedTables]); // 进入时加载当前已选表作为临时状态
-    setCurrentStep("table_selection");
-  };
-
-  const handleConfirmSelection = async () => {
-    // 只在确认时保存选择状态到数据库
-    setSelectedTables(tempSelectedTables);
-    try {
-      await SaveTableSelections(tempSelectedTables);
-    } catch (error) {
-      console.warn("Failed to save table selections:", error);
-    }
-    setCurrentStep("analysis_tables");
-    setPreviousStep(null);
-  };
-
-  const _handleReanalyze = () => {
-    setCurrentStep("analysis_tables");
   };
 
   const handleGoHome = () => {
@@ -487,29 +352,6 @@ function App() {
             onSaveConnection={saveConnection}
             onBack={handleBack}
             connectionStatus={connectionStatus}
-          />
-        )}
-
-        {currentStep === "analysis_tables" && (
-          <AnalysisTablesPage
-            selectedTables={selectedTables}
-            onRemoveTable={toggleTableSelection}
-            onAddTables={handleAddTables}
-            onStartAnalysis={startAnalysis}
-            onBack={handleBack}
-            onLoadMetadata={handleLoadMetadata}
-          />
-        )}
-
-        {currentStep === "table_selection" && (
-          <TableSelectionPage
-            tables={tables}
-            selectedTables={tempSelectedTables}
-            onTableToggle={toggleTempTableSelection}
-            onSelectAll={handleTempSelectAll}
-            onDeselectAll={handleTempDeselectAll}
-            onBack={handleBack}
-            onConfirmSelection={handleConfirmSelection}
           />
         )}
 
