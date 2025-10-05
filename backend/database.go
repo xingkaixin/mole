@@ -33,6 +33,10 @@ func NewDatabaseManager() *DatabaseManager {
 
 // Connect 连接数据库
 func (dm *DatabaseManager) Connect(config *DatabaseConfig) error {
+	logger := GetLogger()
+	logger.SetModuleName("DATABASE")
+	logger.LogInfo("CONNECT", fmt.Sprintf("开始连接数据库 %s@%s:%d/%s", config.Username, config.Host, config.Port, config.Database))
+
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
 		config.Username,
 		config.Password,
@@ -42,21 +46,28 @@ func (dm *DatabaseManager) Connect(config *DatabaseConfig) error {
 
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
+		logger.LogError("CONNECT", fmt.Sprintf("打开数据库连接失败 - %s", err.Error()))
 		return fmt.Errorf("failed to open database: %w", err)
 	}
 
 	if err := db.Ping(); err != nil {
 		db.Close()
+		logger.LogError("CONNECT", fmt.Sprintf("数据库ping失败 - %s", err.Error()))
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
 
 	dm.config = config
 	dm.db = db
+	logger.LogInfo("CONNECT", fmt.Sprintf("数据库连接成功 - %s", config.Name))
 	return nil
 }
 
 // TestConnection 测试连接
 func (dm *DatabaseManager) TestConnection(config *DatabaseConfig) error {
+	logger := GetLogger()
+	logger.SetModuleName("DATABASE")
+	logger.LogInfo("TEST", fmt.Sprintf("开始测试数据库连接 %s@%s:%d/%s", config.Username, config.Host, config.Port, config.Database))
+
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
 		config.Username,
 		config.Password,
@@ -66,25 +77,35 @@ func (dm *DatabaseManager) TestConnection(config *DatabaseConfig) error {
 
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
+		logger.LogError("TEST", fmt.Sprintf("测试连接打开数据库失败 - %s", err.Error()))
 		return fmt.Errorf("failed to open database: %w", err)
 	}
 	defer db.Close()
 
 	if err := db.Ping(); err != nil {
+		logger.LogError("TEST", fmt.Sprintf("测试连接ping失败 - %s", err.Error()))
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
 
+	logger.LogInfo("TEST", fmt.Sprintf("数据库连接测试成功 - %s", config.Name))
 	return nil
 }
 
 // GetTables 获取表清单
 func (dm *DatabaseManager) GetTables() ([]string, error) {
+	logger := GetLogger()
+	logger.SetModuleName("DATABASE")
+
 	if dm.db == nil {
+		logger.LogError("GET_TABLES", "数据库未连接")
 		return nil, fmt.Errorf("database not connected")
 	}
 
+	logger.LogInfo("GET_TABLES", "开始获取数据库表清单")
+
 	rows, err := dm.db.Query("SHOW TABLES")
 	if err != nil {
+		logger.LogError("GET_TABLES", fmt.Sprintf("查询表清单失败 - %s", err.Error()))
 		return nil, fmt.Errorf("failed to query tables: %w", err)
 	}
 	defer rows.Close()
@@ -93,11 +114,13 @@ func (dm *DatabaseManager) GetTables() ([]string, error) {
 	for rows.Next() {
 		var tableName string
 		if err := rows.Scan(&tableName); err != nil {
+			logger.LogError("GET_TABLES", fmt.Sprintf("扫描表名失败 - %s", err.Error()))
 			return nil, fmt.Errorf("failed to scan table name: %w", err)
 		}
 		tables = append(tables, tableName)
 	}
 
+	logger.LogInfo("GET_TABLES", fmt.Sprintf("获取表清单成功 - 共 %d 个表", len(tables)))
 	return tables, nil
 }
 
@@ -312,8 +335,13 @@ func (dm *DatabaseManager) GetDB() *sql.DB {
 
 // Close 关闭连接
 func (dm *DatabaseManager) Close() error {
+	logger := GetLogger()
+	logger.SetModuleName("DATABASE")
+
 	if dm.db != nil {
+		logger.LogInfo("CLOSE", "关闭数据库连接")
 		return dm.db.Close()
 	}
+	logger.LogInfo("CLOSE", "数据库连接已为空，无需关闭")
 	return nil
 }

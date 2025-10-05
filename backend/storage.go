@@ -34,32 +34,42 @@ type StorageManager struct {
 
 // NewStorageManager 创建存储管理器
 func NewStorageManager() (*StorageManager, error) {
+	logger := GetLogger()
+	logger.SetModuleName("STORAGE")
+	logger.LogInfo("CREATE", "创建存储管理器")
+
 	// 获取跨平台数据目录
 	dataDir, err := getAppDataDir()
 	if err != nil {
+		logger.LogError("CREATE", fmt.Sprintf("获取应用数据目录失败 - %s", err.Error()))
 		return nil, fmt.Errorf("failed to get app data directory: %w", err)
 	}
 
 	// 确保目录存在
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		logger.LogError("CREATE", fmt.Sprintf("创建数据目录失败 - %s", err.Error()))
 		return nil, fmt.Errorf("failed to create data directory: %w", err)
 	}
 
 	// 数据库文件路径
 	dbPath := filepath.Join(dataDir, "mole.db")
+	logger.LogInfo("CREATE", fmt.Sprintf("SQLite数据库路径 - %s", dbPath))
 
 	// 连接SQLite数据库
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
+		logger.LogError("CREATE", fmt.Sprintf("打开SQLite数据库失败 - %s", err.Error()))
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
 	// 创建表
 	if err := createTables(db); err != nil {
 		db.Close()
+		logger.LogError("CREATE", fmt.Sprintf("创建数据库表失败 - %s", err.Error()))
 		return nil, fmt.Errorf("failed to create tables: %w", err)
 	}
 
+	logger.LogInfo("CREATE", "存储管理器创建成功")
 	return &StorageManager{db: db}, nil
 }
 

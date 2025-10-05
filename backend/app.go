@@ -33,36 +33,72 @@ func NewApp() *App {
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 
+	// 初始化日志系统
+	err := InitLogger(ctx)
+	if err != nil {
+		fmt.Printf("Warning: Failed to initialize logger: %v\n", err)
+	} else {
+		logger := GetLogger()
+		logger.SetModuleName("APP")
+		logger.LogInfo("STARTUP", "应用启动 - Wails应用启动中...")
+	}
+
 	// 初始化存储管理器
 	storageManager, err := NewStorageManager()
 	if err != nil {
 		// 如果存储管理器初始化失败，应用仍然可以运行，只是无法保存连接配置
-		fmt.Printf("Warning: Failed to initialize storage manager: %v\n", err)
+		if logger := GetLogger(); logger != nil {
+			logger.LogError("STARTUP", fmt.Sprintf("存储管理器初始化失败 - %s", err.Error()))
+		} else {
+			fmt.Printf("Warning: Failed to initialize storage manager: %v\n", err)
+		}
 	} else {
 		a.storageManager = storageManager
+		if logger := GetLogger(); logger != nil {
+			logger.LogInfo("STARTUP", "存储管理器初始化 - 存储管理器初始化成功")
+		}
 	}
 
 	// 初始化任务管理器
 	a.taskManager = NewTaskManager(5, a.analysisEngine, a.dbManager, a.storageManager)
 	a.taskManager.Start()
+
+	if logger := GetLogger(); logger != nil {
+		logger.LogInfo("STARTUP", "任务管理器启动 - 任务管理器已启动，最大并发数: 5")
+		logger.LogInfo("STARTUP", "应用启动完成 - 所有核心组件初始化完成，应用就绪")
+	}
 }
 
 // TestDatabaseConnection 测试数据库连接
 func (a *App) TestDatabaseConnection(config DatabaseConfig) (string, error) {
+	logger := GetLogger()
+	logger.SetModuleName("APP")
+	logger.LogInfo("TEST_CONNECTION", fmt.Sprintf("测试数据库连接 - %s", config.Name))
+
 	err := a.dbManager.TestConnection(&config)
 	if err != nil {
+		logger.LogError("TEST_CONNECTION", fmt.Sprintf("连接测试失败 - %s: %s", config.Name, err.Error()))
 		return "", fmt.Errorf("连接失败: %s", err.Error())
 	}
+
+	logger.LogInfo("TEST_CONNECTION", fmt.Sprintf("连接测试成功 - %s", config.Name))
 	return "连接成功", nil
 }
 
 // ConnectDatabase 连接数据库
 func (a *App) ConnectDatabase(config DatabaseConfig) (string, error) {
+	logger := GetLogger()
+	logger.SetModuleName("APP")
+	logger.LogInfo("CONNECT_DATABASE", fmt.Sprintf("连接数据库 - %s", config.Name))
+
 	err := a.dbManager.Connect(&config)
 	if err != nil {
+		logger.LogError("CONNECT_DATABASE", fmt.Sprintf("连接失败 - %s: %s", config.Name, err.Error()))
 		return "", fmt.Errorf("连接失败: %s", err.Error())
 	}
+
 	a.currentConfig = &config
+	logger.LogInfo("CONNECT_DATABASE", fmt.Sprintf("数据库连接成功 - %s", config.Name))
 	return "连接成功", nil
 }
 
@@ -84,18 +120,23 @@ func (a *App) AnalyzeTables(tables []string) ([]interface{}, error) {
 
 // StartAnalysisTasks 启动分析任务
 func (a *App) StartAnalysisTasks(connectionID string, tables []string) (string, error) {
+	logger := GetLogger()
+	logger.SetModuleName("APP")
+
 	if a.currentConfig == nil {
+		logger.LogError("START_ANALYSIS", "没有活跃的数据库连接")
 		return "", fmt.Errorf("no active database connection")
 	}
 
 	if a.taskManager == nil {
+		logger.LogError("START_ANALYSIS", "任务管理器未初始化")
 		return "", fmt.Errorf("task manager not initialized")
 	}
 
 	// 创建任务组ID
 	groupID := fmt.Sprintf("analysis_%s_%d", connectionID, time.Now().Unix())
 
-	fmt.Printf("Starting parallel analysis tasks for connection %s, tables: %v\n", connectionID, tables)
+	logger.LogInfo("START_ANALYSIS", fmt.Sprintf("启动并行分析任务 - 连接: %s, 表数量: %d", connectionID, len(tables)))
 
 	// 为每个表创建任务并添加到任务管理器
 	for _, tableName := range tables {
@@ -110,11 +151,12 @@ func (a *App) StartAnalysisTasks(connectionID string, tables []string) (string, 
 
 		err := a.taskManager.AddTask(task)
 		if err != nil {
-			fmt.Printf("Failed to add task for table %s: %v\n", tableName, err)
+			logger.LogError("START_ANALYSIS", fmt.Sprintf("添加任务失败 - 表: %s, 错误: %v", tableName, err))
 			return "", fmt.Errorf("failed to add task for table %s: %v", tableName, err)
 		}
 	}
 
+	logger.LogInfo("START_ANALYSIS", fmt.Sprintf("分析任务启动成功 - 任务组ID: %s", groupID))
 	return groupID, nil
 }
 
@@ -620,6 +662,11 @@ func (a *App) GetAllConnectionsWithMetadata() ([]map[string]interface{}, error) 
 	}
 
 	return a.storageManager.GetAllConnectionsWithMetadata()
+}
+
+// LogFrontendAction 前端调用的日志记录方法
+func (a *App) LogFrontendAction(module, action, details string) {
+	LogUserAction(module, action, details)
 }
 
 // Greet returns a greeting for the given name

@@ -40,6 +40,12 @@ This project utilizes a modern frontend stack:
 - [**Biome**](https://biomejs.dev/): A fast formatter and linter for web projects.
 - [**Radix UI**](https://www.radix-ui.com/): Primitives for building accessible design systems and web applications.
 
+
+## 日志文件位置
+- macOS: ~/Library/Logs/mole/mole_YYYY-MM-DD.log
+- Windows: %APPDATA%\mole\logs\mole_YYYY-MM-DD.log
+- Linux: ~/.local/share/mole/logs/mole_YYYY-MM-DD.log
+
 ### Common Shadcn UI Commands
 
 Use the following commands (from the `frontend` directory) to add new Shadcn UI components:

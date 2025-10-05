@@ -19,6 +19,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import type { DatabaseConfig } from "@/types";
+import { createLogger } from "@/lib/logger";
 
 interface WelcomePageProps {
 	connections: DatabaseConfig[];
@@ -39,6 +40,9 @@ export function WelcomePage({
 	onDuplicateConnection,
 	onUpdateMetadata,
 }: WelcomePageProps) {
+	// 创建欢迎页面日志记录器
+	const logger = createLogger('WelcomePage');
+
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [connectionToDelete, setConnectionToDelete] =
 		useState<DatabaseConfig | null>(null);
@@ -80,13 +84,14 @@ export function WelcomePage({
 	}, [connections, filters]);
 
 	const _handleDeleteClick = (connection: DatabaseConfig) => {
+		logger.info('删除对话框', `打开删除确认对话框 - 连接: ${connection.name}`);
 		setConnectionToDelete(connection);
 		setDeleteDialogOpen(true);
 	};
 
 	const handleConfirmDelete = () => {
-		console.log("Confirm delete:", connectionToDelete);
 		if (connectionToDelete?.id) {
+			logger.info('确认删除', `删除数据库连接 - ${connectionToDelete.name}`);
 			onDeleteConnection(connectionToDelete.id);
 		}
 		setDeleteDialogOpen(false);
@@ -99,6 +104,7 @@ export function WelcomePage({
 	};
 
 	const clearFilters = () => {
+		logger.info('清除过滤器', '清除所有搜索和类型过滤器');
 		setFilters({ searchText: "", type: "all" });
 	};
 
@@ -189,7 +195,10 @@ export function WelcomePage({
 				{!connections || connections.length === 0 ? (
 					<button
 						type="button"
-						onClick={onAddConnection}
+						onClick={() => {
+							logger.click('添加数据库连接');
+							onAddConnection();
+						}}
 						className="aspect-square border-2 border-dashed border-border rounded-lg flex items-center justify-center hover:border-primary hover:bg-secondary/50 transition-colors group"
 					>
 						<div className="text-center">
@@ -226,7 +235,10 @@ export function WelcomePage({
 						))}
 						<button
 							type="button"
-							onClick={onAddConnection}
+							onClick={() => {
+								logger.click('添加数据库连接');
+								onAddConnection();
+							}}
 							className="aspect-square border-2 border-dashed border-border rounded-lg flex items-center justify-center hover:border-primary hover:bg-secondary/50 transition-colors group"
 						>
 							<div className="text-center">

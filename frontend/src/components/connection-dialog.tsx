@@ -19,6 +19,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import type { DatabaseConfig } from "@/types";
+import { createLogger } from "@/lib/logger";
 
 type ConnectionDialogProps = {
 	open: boolean;
@@ -35,6 +36,9 @@ export function ConnectionDialog({
 	connection,
 	onSave,
 }: ConnectionDialogProps) {
+	// 创建连接对话框日志记录器
+	const logger = createLogger('ConnectionDialog');
+
 	const nameId = useId();
 	const typeId = useId();
 	const hostId = useId();
@@ -91,6 +95,11 @@ export function ConnectionDialog({
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
+
+		const isEdit = !!connection;
+		const action = isEdit ? '编辑' : '添加';
+		logger.formSubmit('数据库连接', true, `${action}数据库连接 - ${formData.name}`);
+
 		if (connection) {
 			onSave({ ...formData, id: connection.id });
 		} else {

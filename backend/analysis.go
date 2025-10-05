@@ -148,22 +148,30 @@ func (e *AnalysisEngine) GetAvailableRules() []string {
 
 // ExecuteAnalysis 执行分析
 func (e *AnalysisEngine) ExecuteAnalysis(ctx context.Context, db *sql.DB, tableName string, config *DatabaseConfig, ruleNames []string) (map[string]interface{}, error) {
+	logger := GetLogger()
+	logger.SetModuleName("ANALYSIS")
+	logger.LogInfo("EXECUTE", fmt.Sprintf("开始执行表分析 - 表: %s, 规则数: %d", tableName, len(ruleNames)))
+
 	result := make(map[string]interface{})
 
 	for _, ruleName := range ruleNames {
 		rule, exists := e.rules[ruleName]
 		if !exists {
+			logger.LogError("EXECUTE", fmt.Sprintf("规则不存在 - %s", ruleName))
 			continue // 跳过不存在的规则
 		}
 
+		logger.LogInfo("EXECUTE_RULE", fmt.Sprintf("执行规则 - %s.%s", tableName, ruleName))
 		ruleResult, err := rule.Execute(ctx, db, tableName, config)
 		if err != nil {
+			logger.LogError("EXECUTE_RULE", fmt.Sprintf("规则执行失败 - %s.%s: %s", tableName, ruleName, err.Error()))
 			result[ruleName] = map[string]interface{}{
 				"error": err.Error(),
 			}
 			continue
 		}
 
+		logger.LogInfo("EXECUTE_RULE", fmt.Sprintf("规则执行成功 - %s.%s", tableName, ruleName))
 		result[ruleName] = ruleResult
 	}
 

@@ -51,6 +51,10 @@ type TaskManager struct {
 
 // NewTaskManager 创建任务管理器
 func NewTaskManager(maxWorkers int, analysisEngine *AnalysisEngine, dbManager *DatabaseManager, storageManager *StorageManager) *TaskManager {
+	logger := GetLogger()
+	logger.SetModuleName("TASK_MANAGER")
+	logger.LogInfo("CREATE", fmt.Sprintf("创建任务管理器 - 最大工作线程数: %d", maxWorkers))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	return &TaskManager{
 		tasks:          make(map[string]*AnalysisTask),
@@ -67,27 +71,43 @@ func NewTaskManager(maxWorkers int, analysisEngine *AnalysisEngine, dbManager *D
 
 // Start 启动任务管理器
 func (tm *TaskManager) Start() {
+	logger := GetLogger()
+	logger.SetModuleName("TASK_MANAGER")
+	logger.LogInfo("START", "启动任务管理器")
+
 	// 初始化工作池
 	for i := 0; i < tm.maxWorkers; i++ {
 		tm.workers <- struct{}{}
 	}
 
+	logger.LogInfo("START", fmt.Sprintf("工作池初始化完成 - 创建 %d 个工作线程", tm.maxWorkers))
+
 	// 启动任务调度器
 	go tm.scheduler()
+	logger.LogInfo("START", "任务调度器已启动")
 }
 
 // Stop 停止任务管理器
 func (tm *TaskManager) Stop() {
+	logger := GetLogger()
+	logger.SetModuleName("TASK_MANAGER")
+	logger.LogInfo("STOP", "停止任务管理器")
+
 	tm.cancel()
 	close(tm.taskQueue)
+	logger.LogInfo("STOP", "任务管理器已停止")
 }
 
 // AddTask 添加任务
 func (tm *TaskManager) AddTask(task *AnalysisTask) error {
+	logger := GetLogger()
+	logger.SetModuleName("TASK_MANAGER")
+
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
 
 	if _, exists := tm.tasks[task.ID]; exists {
+		logger.LogError("ADD_TASK", fmt.Sprintf("任务已存在 - %s", task.ID))
 		return fmt.Errorf("task with ID %s already exists", task.ID)
 	}
 
@@ -96,13 +116,17 @@ func (tm *TaskManager) AddTask(task *AnalysisTask) error {
 	task.Status = TaskStatusPending
 	tm.tasks[task.ID] = task
 
+	logger.LogInfo("ADD_TASK", fmt.Sprintf("添加任务 - %s (表: %s)", task.ID, task.TableName))
+
 	// 将任务加入队列
 	select {
 	case tm.taskQueue <- task:
+		logger.LogInfo("ADD_TASK", fmt.Sprintf("任务已加入队列 - %s", task.ID))
 		return nil
 	default:
 		// 如果队列满了，取消context
 		task.cancel()
+		logger.LogError("ADD_TASK", fmt.Sprintf("任务队列已满 - %s", task.ID))
 		return fmt.Errorf("task queue is full")
 	}
 }
@@ -132,13 +156,19 @@ func (tm *TaskManager) GetTasksByDatabase(databaseID string) []*AnalysisTask {
 
 // CancelTask 取消任务
 func (tm *TaskManager) CancelTask(taskID string) error {
+	logger := GetLogger()
+	logger.SetModuleName("TASK_MANAGER")
+
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
 
 	task, exists := tm.tasks[taskID]
 	if !exists {
+		logger.LogError("CANCEL_TASK", fmt.Sprintf("任务不存在 - %s", taskID))
 		return fmt.Errorf("task not found")
 	}
+
+	logger.LogInfo("CANCEL_TASK", fmt.Sprintf("取消任务 - %s (表: %s)", taskID, task.TableName))
 
 	// 调用任务的cancel函数，立即取消正在执行的SQL查询
 	// 这会触发所有使用task.ctx的QueryContext和QueryRowContext调用返回context.Canceled错误
