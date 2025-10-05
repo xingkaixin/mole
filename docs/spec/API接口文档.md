@@ -14,10 +14,10 @@ Mole 系统基于 Wails 框架，通过 Go 后端提供 API 接口，前端通�
 ## 接口分类
 
 ### 1. 数据库连接管理接口
-### 2. 表操作接口
-### 3. 分析任务接口
-### 4. 分析结果接口
-### 5. 配置管理接口
+### 2. 元数据管理接口
+### 3. 任务管理接口
+### 4. 分析任务接口
+### 5. 分析结果接口
 ### 6. 系统工具接口
 
 ---
@@ -227,41 +227,226 @@ tableNames: string[]  // 要保存的表名数组
 
 ---
 
-## 3. 分析任务接口
+## 3. 元数据管理接口
 
-### 3.1 启动分析任务
+### 3.1 更新数据库元数据
 
-**接口**: `StartAnalysisTasks(connectionID: string, tables: string[]): Promise<string>`
+**接口**: `UpdateDatabaseMetadata(connectionID: string): Promise<MetadataUpdateResult>`
 
-**功能**: 为指定表启动并发分析任务
+**功能**: 更新指定数据库连接的元数据信息，包括表和列的完整信息
 
 **参数**:
 ```typescript
 connectionID: string  // 数据库连接ID
-tables: string[]      // 要分析的表名数组
 ```
 
 **返回值**:
 ```typescript
-Promise<string>  // 任务组ID，用于跟踪任务状态
+Promise<MetadataUpdateResult>
+
+interface MetadataUpdateResult {
+    status: string;        // "success" 或 "failed"
+    message: string;       // 操作结果描述
+    connectionName?: string; // 连接名称
+    tableCount?: number;   // 更新的表数量
+    columnCount?: number;  // 更新的列数量
+    duration?: number;     // 执行时长(毫秒)
+}
 ```
 
 **示例**:
 ```typescript
 try {
-    const taskGroupId = await StartAnalysisTasks("conn_001", ["users", "orders"]);
-    console.log("分析任务已启动:", taskGroupId);
-    // 输出: "analysis_conn_001_1703123456"
+    const result = await UpdateDatabaseMetadata("conn_001");
+    if (result.status === "success") {
+        console.log(`元数据更新成功: ${result.message}`);
+        console.log(`更新了 ${result.tableCount} 个表，${result.columnCount} 个列`);
+    }
 } catch (error) {
-    console.error("启动分析任务失败:", error.message);
+    console.error("更新元数据失败:", error.message);
 }
 ```
 
-### 3.2 获取任务状态
+### 3.2 获取元数据表列表
 
-**接口**: `GetTaskStatus(taskID: string): Promise<TaskStatusInfo>`
+**接口**: `GetMetadataTables(connectionID: string): Promise<MetadataTable[]>`
 
-**功能**: 获取指定任务的详细状态信息
+**功能**: 获取指定数据库连接的元数据表列表
+
+**参数**:
+```typescript
+connectionID: string  // 数据库连接ID
+```
+
+**返回值**:
+```typescript
+Promise<MetadataTable[]>
+
+interface MetadataTable {
+    id: string;         // 表ID
+    tableName: string;   // 表名
+    comment: string;     // 表注释
+    dataSize: number;   // 数据大小(字节)
+    rowCount: number;   // 行数
+    columnCount: number; // 列数
+}
+```
+
+### 3.3 获取表列信息
+
+**接口**: `GetMetadataColumns(tableID: string): Promise<MetadataColumn[]>`
+
+**功能**: 获取指定表的列信息
+
+**参数**:
+```typescript
+tableID: string  // 表ID
+```
+
+**返回值**:
+```typescript
+Promise<MetadataColumn[]>
+
+interface MetadataColumn {
+    id: string;           // 列ID
+    columnName: string;   // 列名
+    columnComment: string; // 列注释
+    columnOrdinal: number; // 列序号
+    columnType: string;   // 列类型
+}
+```
+
+---
+
+## 4. 任务管理接口
+
+### 4.1 创建任务
+
+**接口**: `CreateTask(name: string, description: string): Promise<CreateTaskResult>`
+
+**功能**: 创建新的分析任务
+
+**参数**:
+```typescript
+name: string;         // 任务名称
+description: string; // 任务描述 (可选，默认为空字符串)
+```
+
+**返回值**:
+```typescript
+Promise<CreateTaskResult>
+
+interface CreateTaskResult {
+    status: string;  // "success" 或 "failed"
+    id?: string;    // 任务ID (创建成功时)
+    message: string; // 操作结果描述
+}
+```
+
+**示例**:
+```typescript
+try {
+    const result = await CreateTask("用户数据分析", "分析用户表的相关数据");
+    if (result.status === "success") {
+        console.log("任务创建成功，ID:", result.id);
+    }
+} catch (error) {
+    console.error("创建任务失败:", error.message);
+}
+```
+
+### 4.2 获取所有任务
+
+**接口**: `GetAllTasks(): Promise<Task[]>`
+
+**功能**: 获取系统中所有任务的列表
+
+**返回值**:
+```typescript
+Promise<Task[]>
+
+interface Task {
+    id: string;          // 任务ID
+    name: string;        // 任务名称
+    description: string; // 任务描述
+    status: string;      // 任务状态
+    createdAt: string;   // 创建时间
+    updatedAt: string;   // 更新时间
+    tables: TaskTable[]; // 任务关联的表
+}
+```
+
+### 4.3 更新任务
+
+**接口**: `UpdateTask(id: string, name: string, description: string): Promise<UpdateTaskResult>`
+
+**功能**: 更新指定任务的信息
+
+**参数**:
+```typescript
+id: string;          // 任务ID
+name: string;        // 新的任务名称
+description: string; // 新的任务描述
+```
+
+**返回值**:
+```typescript
+Promise<UpdateTaskResult>
+
+interface UpdateTaskResult {
+    status: string;  // "success" 或 "failed"
+    message: string; // 操作结果描述
+}
+```
+
+### 4.4 删除任务
+
+**接口**: `DeleteTask(id: string): Promise<DeleteTaskResult>`
+
+**功能**: 删除指定的任务
+
+**参数**:
+```typescript
+id: string  // 任务ID
+```
+
+**返回值**:
+```typescript
+Promise<DeleteTaskResult>
+
+interface DeleteTaskResult {
+    status: string;  // "success" 或 "failed"
+    message: string; // 操作结果描述
+}
+```
+
+### 4.5 添加表到任务
+
+**接口**: `AddTablesToTask(taskID: string, tableIDs: string[]): Promise<AddTablesResult>`
+
+**功能**: 批量添加表到指定任务
+
+**参数**:
+```typescript
+taskID: string;     // 任务ID
+tableIDs: string[]; // 要添加的表ID数组
+```
+
+**返回值**:
+```typescript
+Promise<AddTablesResult>
+
+interface AddTablesResult {
+    status: string;  // "success" 或 "failed"
+    message: string; // 操作结果描述
+}
+```
+
+### 4.6 获取任务下的表
+
+**接口**: `GetTaskTables(taskID: string): Promise<TaskTable[]>`
+
+**功能**: 获取指定任务下的所有表
 
 **参数**:
 ```typescript
@@ -270,61 +455,202 @@ taskID: string  // 任务ID
 
 **返回值**:
 ```typescript
-Promise<TaskStatusInfo>
+Promise<TaskTable[]>
 
-interface TaskStatusInfo {
-    id: string;                    // 任务ID
-    tableName: string;             // 表名
-    databaseId: string;            // 数据库ID
-    status: TaskStatus;            // 任务状态
-    progress: number;              // 进度 (0-100)
-    errorMessage?: string;         // 错误信息
-    startedAt: Date;               // 开始时间
-    completedAt?: Date;            // 完成时间
-    duration: number;              // 执行时长(毫秒)
+interface TaskTable {
+    id: string;             // 任务表关联ID
+    taskID: string;          // 任务ID
+    tableID: string;         // 表ID
+    addedAt: string;         // 添加时间
+    tblStatus: string;       // 表状态: "待分析" | "分析中" | "分析完成"
+    connectionID: string;     // 连接ID
+    connectionName: string;   // 连接名称
+    tableName: string;        // 表名
+    tableComment: string;     // 表注释
+    rowCount: number;         // 行数
+    tableSize: number;       // 表大小(字节)
+    columnCount: number;     // 列数
 }
-
-type TaskStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
 ```
 
-### 3.3 获取数据库任务列表
+### 4.7 从任务中移除表
 
-**接口**: `GetTasksByDatabase(databaseID: string): Promise<TaskStatusInfo[]>`
+**接口**: `RemoveTableFromTask(taskID: string, taskTableID: string): Promise<RemoveTableResult>`
 
-**功能**: 获取指定数据库的所有任务状态
+**功能**: 从指定任务中移除表
 
 **参数**:
 ```typescript
-databaseID: string  // 数据库ID
+taskID: string;       // 任务ID
+taskTableID: string;  // 任务表关联ID
 ```
 
 **返回值**:
 ```typescript
-Promise<TaskStatusInfo[]>  // 任务状态信息数组
+Promise<RemoveTableResult>
+
+interface RemoveTableResult {
+    status: string;  // "success" 或 "failed"
+    message: string; // 操作结果描述
+}
 ```
 
-### 3.4 取消任务
+### 4.8 启动任务分析
 
-**接口**: `CancelTask(taskID: string): Promise<void>`
+**接口**: `StartTaskAnalysis(taskID: string): Promise<StartAnalysisResult>`
 
-**功能**: 取消指定的分析任务，立即中断正在执行的SQL查询
+**功能**: 启动指定任务的分析工作
 
 **参数**:
 ```typescript
-taskID: string  // 要取消的任务ID
+taskID: string  // 任务ID
 ```
 
-**特性**:
-- 立即中断MySQL查询，释放数据库资源
-- 任务状态实时更新为"已取消"
-- 支持120秒超时自动取消
-- context传播确保所有相关操作都被取消
+**返回值**:
+```typescript
+Promise<StartAnalysisResult>
+
+interface StartAnalysisResult {
+    status: string;  // "success" 或 "failed"
+    message: string; // 操作结果描述
+}
+```
+
+### 4.9 取消表分析
+
+**接口**: `CancelTableAnalysis(taskID: string, taskTableID: string): Promise<CancelAnalysisResult>`
+
+**功能**: 取消指定表中正在进行的分析
+
+**参数**:
+```typescript
+taskID: string;      // 任务ID
+taskTableID: string; // 任务表关联ID
+```
+
+**返回值**:
+```typescript
+Promise<CancelAnalysisResult>
+
+interface CancelAnalysisResult {
+    status: string;  // "success" 或 "failed"
+    message: string; // 操作结果描述
+}
+```
+
+### 4.10 获取表分析结果
+
+**接口**: `GetTableAnalysisResult(taskID: string, taskTableID: string): Promise<AnalysisResult>`
+
+**功能**: 获取指定表中分析的基本结果
+
+**参数**:
+```typescript
+taskID: string;      // 任务ID
+taskTableID: string; // 任务表关联ID
+```
+
+**返回值**:
+```typescript
+Promise<AnalysisResult>
+
+interface AnalysisResult {
+    status: string;                           // 状态
+    results: {
+        row_count?: number;                   // 行数
+        non_null_rate?: Record<string, number>; // 非空值率统计
+    };
+    tableName: string;                        // 表名
+    databaseId: string;                       // 数据库ID
+    startedAt: string;                        // 开始时间
+    completedAt?: string;                     // 完成时间
+    duration: number;                        // 执行时长(毫秒)
+    rules: string[];                          // 应用的规则列表
+}
+```
+
+### 4.11 获取增强的分析结果
+
+**接口**: `GetEnhancedAnalysisResult(taskID: string, taskTableID: string): Promise<EnhancedAnalysisResult>`
+
+**功能**: 获取指定表中分析的增强结果，包含完整的列信息
+
+**参数**:
+```typescript
+taskID: string;      // 任务ID
+taskTableID: string; // 任务表关联ID
+```
+
+**返回值**:
+```typescript
+Promise<EnhancedAnalysisResult>
+
+interface EnhancedAnalysisResult {
+    status: string;                           // 状态
+    results: {
+        row_count?: number;                   // 行数
+        non_null_rate?: Record<string, number>; // 非空值率统计
+    };
+    tableName: string;                        // 表名
+    tableComment: string;                     // 表注释
+    columns: Array<{
+        name: string;    // 列名
+        type: string;    // 列类型
+        comment: string; // 列注释
+        ordinal: number; // 列序号
+    }>;
+    databaseId: string;                       // 数据库ID
+    analysisStatus: string;                   // 分析状态
+    startedAt: string;                        // 开始时间
+    completedAt?: string;                     // 完成时间
+    duration: number;                        // 执行时长(毫秒)
+    rules: string[];                          // 应用的规则列表
+}
+```
+
+### 4.12 获取所有连接的元数据信息
+
+**接口**: `GetAllConnectionsWithMetadata(): Promise<ConnectionWithMetadata[]>`
+
+**功能**: 获取所有数据库连接及其元数据信息，用于表选择对话框
+
+**返回值**:
+```typescript
+Promise<ConnectionWithMetadata[]>
+
+interface ConnectionWithMetadata {
+    id: string;     // 连接ID
+    name: string;   // 连接名称
+    type: string;   // 数据库类型
+    tables: Array<{
+        id: string;         // 表ID
+        name: string;       // 表名
+        comment: string;     // 表注释
+        rowCount: number;   // 行数
+        tableSize: number;  // 表大小(字节)
+        columnCount: number; // 列数
+    }>;
+}
+```
+
+### 4.13 记录前端用户操作日志
+
+**接口**: `LogFrontendAction(module: string, action: string, details: string): Promise<void>`
+
+**功能**: 记录前端用户操作到后端日志系统，实现前后端日志统一
+
+**参数**:
+```typescript
+module: string;   // 模块名称 (如 "Sidebar", "DatabaseConfig")
+action: string;   // 操作类型 (如 "click", "submit", "navigate")
+details: string; // 详细信息
+```
 
 ---
 
-## 4. 分析结果接口
+## 5. 分析结果接口
 
-### 4.1 获取分析结果
+### 5.1 获取分析结果
 
 **接口**: `GetAnalysisResults(connectionID: string): Promise<AnalysisResult[]>`
 
@@ -370,7 +696,7 @@ results.forEach(result => {
 });
 ```
 
-### 4.2 删除分析结果
+### 5.2 删除分析结果
 
 **接口**: `DeleteAnalysisResult(resultID: string): Promise<void>`
 
@@ -381,7 +707,7 @@ results.forEach(result => {
 resultID: string  // 要删除的结果ID
 ```
 
-### 4.3 获取可用规则列表
+### 5.3 获取可用规则列表
 
 **接口**: `GetAvailableRules(): Promise<string[]>`
 
@@ -395,21 +721,57 @@ Promise<string[]>  // 规则名称数组
 
 ---
 
-## 5. 配置管理接口
-
-### 5.1 获取当前应用配置
-
-**接口**: (通过 App 结构体的状态获取)
-
-**功能**: 获取应用的当前运行状态和配置
-
-**注意**: 这是通过状态访问，不是独立的接口
-
----
-
 ## 6. 系统工具接口
 
-### 6.1 问候接口
+### 6.1 前端日志记录接口
+
+**接口**: `LogFrontendAction(module: string, action: string, details: string): Promise<void>`
+
+**功能**: 记录前端用户操作日志，用于用户行为分析和问题排查
+
+**参数**:
+```typescript
+module: string;  // 功能模块名称，如 "DATABASE_CONFIG", "TASK_MANAGEMENT"
+action: string;  // 操作类型，如 "TEST_CONNECTION", "CREATE_TASK"
+details: string; // 操作详情，可包含具体参数和结果
+```
+
+**返回值**:
+```typescript
+Promise<void>
+```
+
+**示例**:
+```typescript
+// 记录数据库连接测试
+await LogFrontendAction("DATABASE_CONFIG", "TEST_CONNECTION", "测试连接: test_db");
+
+// 记录任务创建
+await LogFrontendAction("TASK_MANAGEMENT", "CREATE_TASK", "创建任务: 用户数据分析");
+
+// 记录分析启动
+await LogFrontendAction("ANALYSIS", "START_ANALYSIS", "启动分析: task_001, 5个表");
+```
+
+### 6.2 获取所有连接及其元数据
+
+**接口**: `GetAllConnectionsWithMetadata(): Promise<ConnectionWithMetadata[]>`
+
+**功能**: 获取所有数据库连接及其关联的表元数据信息
+
+**返回值**:
+```typescript
+Promise<ConnectionWithMetadata[]>
+
+interface ConnectionWithMetadata {
+    connection: DatabaseConfig;    // 连接配置
+    tableCount: number;           // 表数量
+    lastUpdated: string;          // 最后更新时间
+    status: string;               // 元数据状态
+}
+```
+
+### 6.3 问候接口
 
 **接口**: `Greet(name: string): Promise<string>`
 
@@ -474,7 +836,7 @@ try {
 
 ## 接口调用示例
 
-### 完整的数据库连接和分析流程
+### 完整的数据库连接和元数据更新流程
 
 ```typescript
 // 1. 测试连接
@@ -495,36 +857,86 @@ await TestDatabaseConnection(config);
 config.id = Date.now().toString();
 await SaveDatabaseConnection(config);
 
-// 3. 建立连接
-await ConnectDatabase(config);
+// 3. 更新数据库元数据
+const metadataResult = await UpdateDatabaseMetadata(config.id);
+if (metadataResult.status === "success") {
+    console.log(`元数据更新成功: 更新了 ${metadataResult.tableCount} 个表`);
+}
 
-// 4. 获取表列表
-const tables = await GetTables();
-console.log("可用表:", tables);
+// 4. 获取所有连接的元数据信息
+const connections = await GetAllConnectionsWithMetadata();
+console.log("所有连接及其表信息:", connections);
+```
 
-// 5. 选择要分析的表
-const selectedTables = ["users", "orders"];
-await SaveTableSelections(selectedTables);
+### 完整的任务管理和分析流程
 
-// 6. 启动分析任务
-const taskGroupId = await StartAnalysisTasks(config.id, selectedTables);
+```typescript
+// 1. 创建分析任务
+const taskResult = await CreateTask("用户数据分析", "分析用户表相关数据");
+if (taskResult.status === "success") {
+    const taskId = taskResult.id;
+    console.log("任务创建成功，ID:", taskId);
 
-// 7. 监控任务进度
-const checkProgress = async () => {
-    const tasks = await GetTasksByDatabase(config.id);
-    const completedTasks = tasks.filter(t => t.status === "completed");
+    // 2. 获取连接的表信息
+    const connections = await GetAllConnectionsWithMetadata();
+    const userTableId = connections[0].tables.find(t => t.name === "users")?.id;
 
-    if (completedTasks.length === selectedTables.length) {
-        console.log("所有分析任务完成");
-        // 8. 获取分析结果
-        const results = await GetAnalysisResults(config.id);
-        console.log("分析结果:", results);
-    } else {
-        setTimeout(checkProgress, 1000); // 1秒后再次检查
+    if (userTableId) {
+        // 3. 添加表到任务
+        const addResult = await AddTablesToTask(taskId, [userTableId]);
+        if (addResult.status === "success") {
+            console.log("表添加成功");
+
+            // 4. 启动任务分析
+            const startResult = await StartTaskAnalysis(taskId);
+            if (startResult.status === "success") {
+                console.log("分析已启动");
+
+                // 5. 监控任务进度
+                const checkProgress = async () => {
+                    const taskTables = await GetTaskTables(taskId);
+                    const completedTable = taskTables.find(t => t.tblStatus === "分析完成");
+
+                    if (completedTable) {
+                        console.log("表分析完成:", completedTable.tableName);
+
+                        // 6. 获取增强分析结果
+                        const result = await GetEnhancedAnalysisResult(taskId, completedTable.id);
+                        if (result.status === "success") {
+                            console.log("分析结果:", result.results);
+                            console.log("列信息:", result.columns);
+                        }
+                    } else {
+                        setTimeout(checkProgress, 3000); // 3秒后再次检查
+                    }
+                };
+
+                checkProgress();
+            }
+        }
     }
-};
+}
 
-checkProgress();
+// 7. 获取所有任务
+const allTasks = await GetAllTasks();
+console.log("系统中的所有任务:", allTasks);
+```
+
+### 元数据管理示例
+
+```typescript
+// 1. 获取元数据表列表
+const tables = await GetMetadataTables("conn_001");
+console.log("元数据表:", tables);
+
+// 2. 获取具体表的列信息
+if (tables.length > 0) {
+    const columns = await GetMetadataColumns(tables[0].id);
+    console.log("表列信息:", columns);
+}
+
+// 3. 记录用户操作日志
+await LogFrontendAction("TaskManager", "click", "用户点击了开始分析按钮");
 ```
 
 ---

@@ -46,27 +46,17 @@ mole/
 │   │   │   ├── connection-dialog.tsx
 │   │   │   ├── create-task-dialog.tsx
 │   │   │   ├── database-card.tsx
-│   │   │   ├── execution-logs-dialog.tsx
-│   │   │   ├── AnalysisProgress.tsx
-│   │   │   ├── AnalysisResultViewer.tsx
-│   │   │   ├── ResultsTable.tsx
 │   │   │   ├── Sidebar.tsx
-│   │   │   ├── mode-toggle.tsx
-│   │   │   └── theme-provider.tsx
 │   │   ├── pages/            # 页面组件
 │   │   │   ├── WelcomePage.tsx
-│   │   │   ├── TablesPage.tsx
 │   │   │   ├── TaskManagementPage.tsx
-│   │   │   ├── TaskProgressPage.tsx
-│   │   │   ├── AnalysisPage.tsx
-│   │   │   ├── AnalysisTablesPage.tsx
-│   │   │   ├── AnalysisReportsPage.tsx
-│   │   │   ├── ResultsPage.tsx
+│   │   │   ├── AnalysisDetailPage.tsx
 │   │   │   └── ConfigPage.tsx
 │   │   ├── types/            # TypeScript类型定义
 │   │   │   └── index.ts
-│   │   ├── lib/              # 工具函数
-│   │   │   └── utils.ts
+│   │   ├── lib/
+│   │   │   └── utils.ts      # 工具函数
+│   │   │   └── logger.ts     # 前端日志函数
 │   │   ├── App.tsx           # 应用主组件
 │   │   ├── main.tsx          # 前端入口
 │   │   └── global.css        # 全局样式
