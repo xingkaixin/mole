@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // TaskStatus 任务状态
@@ -31,6 +33,9 @@ type AnalysisTask struct {
 	CompletedAt    *time.Time      `json:"completed_at"`
 	Duration       time.Duration   `json:"duration"`
 	Result         interface{}     `json:"result"`
+	TaskID         string          `json:"task_id"`         // 新增：任务ID
+	TableID        string          `json:"table_id"`        // 新增：表ID
+	TaskTableID    string          `json:"task_table_id"`   // 新增：任务表关联ID
 	ctx            context.Context `json:"-"`
 	cancel         context.CancelFunc `json:"-"`
 }
@@ -189,6 +194,11 @@ func (tm *TaskManager) CancelTask(taskID string) error {
 		task.ErrorMessage = "任务被取消"
 	}
 
+	// 更新任务表状态为"待分析"
+	if task.TaskID != "" && task.TaskTableID != "" {
+		tm.UpdateTaskTableStatus(task.TaskID, task.TaskTableID, "待分析")
+	}
+
 	return nil
 }
 
@@ -223,6 +233,11 @@ func (tm *TaskManager) executeTask(task *AnalysisTask) {
 	task.StartedAt = &now
 	tm.mu.Unlock()
 
+	// 更新任务表状态为"分析中"
+	if task.TaskID != "" && task.TaskTableID != "" {
+		tm.UpdateTaskTableStatus(task.TaskID, task.TaskTableID, "分析中")
+	}
+
 	// 执行真正的分析任务
 	tm.performTableAnalysis(task)
 }
@@ -233,8 +248,21 @@ func (tm *TaskManager) performTableAnalysis(task *AnalysisTask) {
 	tm.updateTaskProgress(task.ID, 10)
 
 	// 执行真正的分析
-	if tm.analysisEngine != nil && tm.dbManager != nil {
-		db := tm.dbManager.GetDB()
+	if tm.analysisEngine != nil && task.DatabaseConfig != nil {
+		// 为这个任务创建一个临时的数据库连接
+		tempDBManager := NewDatabaseManager()
+		err := tempDBManager.Connect(task.DatabaseConfig)
+		if err != nil {
+			fmt.Printf("Failed to connect to database for task %s: %v\n", task.ID, err)
+			tm.mu.Lock()
+			task.Status = TaskStatusFailed
+			task.ErrorMessage = fmt.Sprintf("数据库连接失败: %s", err.Error())
+			tm.mu.Unlock()
+			return
+		}
+		defer tempDBManager.Close()
+
+		db := tempDBManager.GetDB()
 		if db == nil {
 			fmt.Printf("Failed to get DB connection for task %s\n", task.ID)
 			tm.mu.Lock()
@@ -300,7 +328,12 @@ func (tm *TaskManager) performTableAnalysis(task *AnalysisTask) {
 						CompletedAt: &now,
 						Duration:    task.Duration,
 					}
-					tm.storageManager.SaveAnalysisResult(result)
+					tm.storageManager.SaveAnalysisResult(task.TaskID, task.TableID, result)
+				}
+
+				// 更新任务表状态为"待分析"
+				if task.TaskID != "" && task.TaskTableID != "" {
+					tm.UpdateTaskTableStatus(task.TaskID, task.TaskTableID, "待分析")
 				}
 			} else {
 				task.Status = TaskStatusCompleted
@@ -324,13 +357,32 @@ func (tm *TaskManager) performTableAnalysis(task *AnalysisTask) {
 						CompletedAt: &now,
 						Duration:    task.Duration,
 					}
-					tm.storageManager.SaveAnalysisResult(result)
+					tm.storageManager.SaveAnalysisResult(task.TaskID, task.TableID, result)
+				}
+
+				// 更新任务表状态为"分析完成"
+				if task.TaskID != "" && task.TaskTableID != "" {
+					tm.UpdateTaskTableStatus(task.TaskID, task.TaskTableID, "分析完成")
 				}
 			}
 			return
 		}
-	}
+	} else {
+		// 如果analysisEngine或DatabaseConfig为空，标记任务失败
+		tm.mu.Lock()
+		task.Status = TaskStatusFailed
+		if tm.analysisEngine == nil {
+			task.ErrorMessage = "分析引擎不可用"
+		} else {
+			task.ErrorMessage = "数据库配置不可用"
+		}
+		tm.mu.Unlock()
 
+		// 更新任务表状态为"待分析"
+		if task.TaskID != "" && task.TaskTableID != "" {
+			tm.UpdateTaskTableStatus(task.TaskID, task.TaskTableID, "待分析")
+		}
+	}
 }
 
 // updateTaskProgress 更新任务进度
@@ -382,4 +434,43 @@ func (tm *TaskManager) GetTaskStats() map[string]int {
 	}
 
 	return stats
+}
+
+// UpdateTaskTableStatus 更新任务表状态
+func (tm *TaskManager) UpdateTaskTableStatus(taskID, taskTableID, status string) error {
+	logger := GetLogger()
+	logger.SetModuleName("TASK_MANAGER")
+	logger.LogInfo("UPDATE_STATUS", fmt.Sprintf("TaskManager更新表状态 - 任务: %s, 表: %s, 状态: %s", taskID, taskTableID, status))
+
+	if tm.storageManager == nil {
+		logger.LogError("UPDATE_STATUS", "Storage manager not available")
+		return fmt.Errorf("storage manager not available")
+	}
+
+	err := tm.storageManager.UpdateTaskTableStatus(taskID, taskTableID, status)
+	if err != nil {
+		logger.LogError("UPDATE_STATUS", fmt.Sprintf("Storage manager更新失败 - %s", err.Error()))
+	} else {
+		logger.LogInfo("UPDATE_STATUS", "Storage manager更新成功")
+	}
+
+	return err
+}
+
+// CreateAnalysisTasksForTable 为表创建分析任务
+func (tm *TaskManager) CreateAnalysisTasksForTable(taskID, taskTableID, tableID, tableName, databaseID string, databaseConfig *DatabaseConfig) error {
+	logger := GetLogger()
+	logger.SetModuleName("TASK_MANAGER")
+
+	task := &AnalysisTask{
+		ID:             uuid.New().String(),
+		TableName:      tableName,
+		DatabaseID:     databaseID,
+		DatabaseConfig: databaseConfig,
+		TaskID:         taskID,
+		TableID:        tableID,
+		TaskTableID:    taskTableID,
+	}
+
+	return tm.AddTask(task)
 }

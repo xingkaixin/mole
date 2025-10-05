@@ -131,7 +131,8 @@ func createTables(db *sql.DB) error {
 
 	CREATE TABLE IF NOT EXISTS analysis_results (
 		id TEXT PRIMARY KEY,
-		connection_id TEXT NOT NULL,
+		task_id TEXT NOT NULL,
+		table_id TEXT NOT NULL,
 		table_name TEXT NOT NULL,
 		rules TEXT NOT NULL,
 		results TEXT NOT NULL,
@@ -140,7 +141,9 @@ func createTables(db *sql.DB) error {
 		completed_at DATETIME,
 		duration INTEGER,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (connection_id) REFERENCES database_connections(id) ON DELETE CASCADE
+		UNIQUE(task_id, table_id),
+		FOREIGN KEY (task_id) REFERENCES tasks_info(id) ON DELETE CASCADE,
+		FOREIGN KEY (table_id) REFERENCES metadata_tables(id) ON DELETE CASCADE
 	);
 
 	-- 元数据-表
@@ -185,6 +188,7 @@ func createTables(db *sql.DB) error {
 		id TEXT PRIMARY KEY,
 		task_id TEXT NOT NULL,
 		table_id TEXT NOT NULL,
+		tbl_status TEXT NOT NULL DEFAULT '待分析',
 		added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (task_id) REFERENCES tasks_info(id) ON DELETE CASCADE,
 		FOREIGN KEY (table_id) REFERENCES metadata_tables(id) ON DELETE CASCADE
@@ -192,7 +196,18 @@ func createTables(db *sql.DB) error {
 	`
 
 	_, err := db.Exec(createTableSQL)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// 确保tbl_status字段存在（对于已存在的表）
+	alterTableSQL := `
+		ALTER TABLE tasks_tbls ADD COLUMN tbl_status TEXT NOT NULL DEFAULT '待分析';
+	`
+	// 忽略错误，因为字段可能已经存在
+	db.Exec(alterTableSQL)
+
+	return nil
 }
 
 // SaveConnection 保存数据库连接配置
@@ -322,7 +337,7 @@ func (sm *StorageManager) GetTableSelections(connectionID string) ([]string, err
 }
 
 // SaveAnalysisResult 保存分析结果
-func (sm *StorageManager) SaveAnalysisResult(result *AnalysisResult) error {
+func (sm *StorageManager) SaveAnalysisResult(taskID, tableID string, result *AnalysisResult) error {
 	// 序列化规则和结果
 	rulesJSON, err := json.Marshal(result.Rules)
 	if err != nil {
@@ -335,14 +350,15 @@ func (sm *StorageManager) SaveAnalysisResult(result *AnalysisResult) error {
 	}
 
 	query := `
-	INSERT INTO analysis_results
-	(id, connection_id, table_name, rules, results, status, started_at, completed_at, duration)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	INSERT OR REPLACE INTO analysis_results
+	(id, task_id, table_id, table_name, rules, results, status, started_at, completed_at, duration)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err = sm.db.Exec(query,
 		result.ID,
-		result.DatabaseID,
+		taskID,
+		tableID,
 		result.TableName,
 		string(rulesJSON),
 		string(resultsJSON),
@@ -500,6 +516,47 @@ func (sm *StorageManager) DeleteAnalysisResult(resultID string) error {
 	query := `DELETE FROM analysis_results WHERE id = ?`
 	_, err := sm.db.Exec(query, resultID)
 	return err
+}
+
+// GetTaskTableAnalysisResult 获取特定任务表的分析结果
+func (sm *StorageManager) GetTaskTableAnalysisResult(taskID, tableID string) (*AnalysisResult, error) {
+	query := `
+		SELECT id, task_id, table_id, table_name, rules, results, status, started_at, completed_at, duration
+		FROM analysis_results
+		WHERE task_id = ? AND table_id = ?
+	`
+
+	var result AnalysisResult
+	var rulesJSON, resultsJSON string
+	var durationSeconds int64
+	var returnedTaskID, returnedTableID string
+
+	err := sm.db.QueryRow(query, taskID, tableID).Scan(
+		&result.ID,
+		&returnedTaskID,
+		&returnedTableID,
+		&result.TableName,
+		&rulesJSON,
+		&resultsJSON,
+		&result.Status,
+		&result.StartedAt,
+		&result.CompletedAt,
+		&durationSeconds,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// 反序列化规则和结果
+	if err := json.Unmarshal([]byte(rulesJSON), &result.Rules); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal rules: %w", err)
+	}
+	if err := json.Unmarshal([]byte(resultsJSON), &result.Results); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal results: %w", err)
+	}
+
+	result.Duration = time.Duration(durationSeconds) * time.Second
+	return &result, nil
 }
 
 // MetadataTableInfo 元数据表信息
@@ -899,25 +956,26 @@ type TaskInfo struct {
 
 // TaskTable 任务表关联结构
 type TaskTable struct {
-	ID       string `json:"id"`
-	TaskID   string `json:"taskId"`
-	TableID  string `json:"tableId"`
-	AddedAt  string `json:"addedAt"`
+	ID      string `json:"id"`
+	TaskID  string `json:"taskId"`
+	TableID string `json:"tableId"`
+	AddedAt string `json:"addedAt"`
 }
 
 // TaskTableDetail 任务表详细信息（包含连接和表信息）
 type TaskTableDetail struct {
-	ID            string `json:"id"`
-	TaskID        string `json:"taskId"`
-	TableID       string `json:"tableId"`
-	AddedAt       string `json:"addedAt"`
-	ConnectionID  string `json:"connectionId"`
+	ID             string `json:"id"`
+	TaskID         string `json:"taskId"`
+	TableID        string `json:"tableId"`
+	AddedAt        string `json:"addedAt"`
+	TblStatus      string `json:"tblStatus"`
+	ConnectionID   string `json:"connectionId"`
 	ConnectionName string `json:"connectionName"`
-	TableName     string `json:"tableName"`
-	TableComment  string `json:"tableComment"`
-	RowCount      int64  `json:"rowCount"`
-	TableSize     int64  `json:"tableSize"`
-	ColumnCount   int    `json:"columnCount"`
+	TableName      string `json:"tableName"`
+	TableComment   string `json:"tableComment"`
+	RowCount       int64  `json:"rowCount"`
+	TableSize      int64  `json:"tableSize"`
+	ColumnCount    int    `json:"columnCount"`
 }
 
 // SaveTask 保存任务
@@ -1037,7 +1095,7 @@ func (sm *StorageManager) AddTablesToTask(taskID string, tableIDs []string) erro
 func (sm *StorageManager) GetTaskTables(taskID string) ([]*TaskTableDetail, error) {
 	query := `
 		SELECT
-			tt.id, tt.task_id, tt.table_id, datetime(tt.added_at) as added_at,
+			tt.id, tt.task_id, tt.table_id, COALESCE(tt.tbl_status, '待分析') as tbl_status, datetime(tt.added_at) as added_at,
 			mt.connection_id, dc.name as connection_name,
 			mt.table_name, COALESCE(mt.table_comment, ''),
 			COALESCE(mt.row_count, 0), COALESCE(mt.table_size, 0),
@@ -1062,6 +1120,7 @@ func (sm *StorageManager) GetTaskTables(taskID string) ([]*TaskTableDetail, erro
 			&table.ID,
 			&table.TaskID,
 			&table.TableID,
+			&table.TblStatus,
 			&table.AddedAt,
 			&table.ConnectionID,
 			&table.ConnectionName,
@@ -1086,6 +1145,74 @@ func (sm *StorageManager) RemoveTableFromTask(taskID, taskTableID string) error 
 	query := `DELETE FROM tasks_tbls WHERE task_id = ? AND id = ?`
 	_, err := sm.db.Exec(query, taskID, taskTableID)
 	return err
+}
+
+// UpdateTaskTableStatus 更新任务表状态
+func (sm *StorageManager) UpdateTaskTableStatus(taskID, taskTableID, status string) error {
+	logger := GetLogger()
+	logger.SetModuleName("STORAGE")
+	logger.LogInfo("UPDATE_STATUS", fmt.Sprintf("更新表状态 - 任务: %s, 表: %s, 状态: %s", taskID, taskTableID, status))
+
+	query := `UPDATE tasks_tbls SET tbl_status = ? WHERE task_id = ? AND id = ?`
+	result, err := sm.db.Exec(query, status, taskID, taskTableID)
+	if err != nil {
+		logger.LogError("UPDATE_STATUS", fmt.Sprintf("更新表状态失败 - %s", err.Error()))
+		return err
+	}
+
+	// 检查是否真的更新了记录
+	rowsAffected, _ := result.RowsAffected()
+	logger.LogInfo("UPDATE_STATUS", fmt.Sprintf("表状态更新完成 - 影响行数: %d", rowsAffected))
+
+	return nil
+}
+
+// GetTaskTablesByStatus 根据状态获取任务表列表
+func (sm *StorageManager) GetTaskTablesByStatus(taskID, status string) ([]*TaskTableDetail, error) {
+	query := `
+		SELECT
+			tt.id, tt.task_id, tt.table_id, COALESCE(tt.tbl_status, '待分析') as tbl_status, datetime(tt.added_at) as added_at,
+			mt.connection_id, dc.name as connection_name,
+			mt.table_name, COALESCE(mt.table_comment, ''),
+			COALESCE(mt.row_count, 0), COALESCE(mt.table_size, 0),
+			COALESCE(mt.column_count, 0)
+		FROM tasks_tbls tt
+		JOIN metadata_tables mt ON tt.table_id = mt.id
+		JOIN database_connections dc ON mt.connection_id = dc.id
+		WHERE tt.task_id = ? AND tt.tbl_status = ?
+		ORDER BY tt.added_at DESC
+	`
+
+	rows, err := sm.db.Query(query, taskID, status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tables []*TaskTableDetail
+	for rows.Next() {
+		var table TaskTableDetail
+		err := rows.Scan(
+			&table.ID,
+			&table.TaskID,
+			&table.TableID,
+			&table.TblStatus,
+			&table.AddedAt,
+			&table.ConnectionID,
+			&table.ConnectionName,
+			&table.TableName,
+			&table.TableComment,
+			&table.RowCount,
+			&table.TableSize,
+			&table.ColumnCount,
+		)
+		if err != nil {
+			return nil, err
+		}
+		tables = append(tables, &table)
+	}
+
+	return tables, nil
 }
 
 // GetAllConnectionsWithMetadata 获取所有连接及其表元数据
@@ -1125,21 +1252,21 @@ func (sm *StorageManager) GetAllConnectionsWithMetadata() ([]map[string]interfac
 
 		if _, exists := connections[connectionID]; !exists {
 			connections[connectionID] = map[string]interface{}{
-				"id":      connectionID,
-				"name":    connectionName,
-				"type":    connectionType,
-				"tables":  []map[string]interface{}{},
+				"id":     connectionID,
+				"name":   connectionName,
+				"type":   connectionType,
+				"tables": []map[string]interface{}{},
 			}
 		}
 
 		if tableID.Valid {
 			table := map[string]interface{}{
-				"id":           tableID.String,
-				"name":         tableName.String,
-				"comment":      tableComment.String,
-				"rowCount":     rowCount.Int64,
-				"tableSize":    tableSize.Int64,
-				"columnCount":  columnCount.Int64,
+				"id":          tableID.String,
+				"name":        tableName.String,
+				"comment":     tableComment.String,
+				"rowCount":    rowCount.Int64,
+				"tableSize":   tableSize.Int64,
+				"columnCount": columnCount.Int64,
 			}
 			connections[connectionID]["tables"] = append(connections[connectionID]["tables"].([]map[string]interface{}), table)
 		}

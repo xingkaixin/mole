@@ -94,19 +94,12 @@ mole/
 └── README.md                  # 项目说明
 ```
 
-### spec doc
-- [开发指南](./docs/spec/开发指南.md)
-- [技术架构文档](./docs/spec/技术架构文档.md)
-- [API接口文档](./docs/spec/API接口文档.md)
-- [数据库设计文档](./docs/spec/数据库设计文档.md)
-- [部署指南](./docs/spec/部署指南.md)
-- [功能链路说明文档](./docs/spec/功能链路说明文档.md)
 
 ### 日志文件位置
 通过检查日志文件，来排查问题
-- macOS: ~/Library/Logs/mole/mole_YYYY-MM-DD.log
-- Windows: %APPDATA%\mole\logs\mole_YYYY-MM-DD.log
-- Linux: ~/.local/share/mole/logs/mole_YYYY-MM-DD.log
+- macOS: `~/Library/Logs/mole/mole_YYYY-MM-DD.log`
+- Windows: `%APPDATA%\mole\logs\mole_YYYY-MM-DD.log`
+- Linux: `~/.local/share/mole/logs/mole_YYYY-MM-DD.log`
 
 ### 日志规范
 参考 [开发指南](./docs/spec/开发指南.md##日志系统指南) 了解日志记录的最佳实践和规范。

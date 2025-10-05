@@ -25,8 +25,8 @@ export type AppStep =
   | "table_selection"
   | "analysis"
   | "results"
-  | "reports"
-  | "tasks";
+  | "tasks"
+  | "analysis_detail";
 
 export type TaskTable = {
   id: string;
@@ -38,6 +38,7 @@ export type TaskTable = {
   rowCount: number;
   tableSize: number;
   columnCount: number;
+  tblStatus: string; // 表状态：待分析｜分析中｜分析完成
   addedAt: string;
 };
 

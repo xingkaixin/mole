@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Sidebar } from "@/components/Sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { AnalysisDetailPage } from "@/pages/AnalysisDetailPage";
 import { AnalysisPage } from "@/pages/AnalysisPage";
-import { AnalysisReportsPage } from "@/pages/AnalysisReportsPage";
 import { AnalysisTablesPage } from "@/pages/AnalysisTablesPage";
 import { ConfigPage } from "@/pages/ConfigPage";
 import { ResultsPage } from "@/pages/ResultsPage";
@@ -20,7 +20,6 @@ import type {
 import {
 	CancelTask,
 	ConnectDatabase,
-	DeleteAnalysisResult,
 	DeleteDatabaseConnection,
 	GetAnalysisResults,
 	GetDatabaseConnections,
@@ -41,6 +40,7 @@ function App() {
 	const [connections, setConnections] = useState<DatabaseConfig[]>([]);
 	const [currentConnection, setCurrentConnection] =
 		useState<DatabaseConfig | null>(null);
+	const [currentAnalysisResult, setCurrentAnalysisResult] = useState<any | null>(null);
 	const [dbConfig, setDbConfig] = useState<DatabaseConfig>({
 		id: "",
 		name: "",
@@ -425,24 +425,11 @@ function App() {
 		setCurrentStep("welcome");
 	};
 
-	const handleGoToReports = () => {
-		setCurrentStep("reports");
-	};
-
 	const handleGoToTasks = () => {
 		setCurrentStep("tasks");
 	};
 
-	const handleDeleteAnalysisResult = async (resultId: string) => {
-		try {
-			await DeleteAnalysisResult(resultId);
-			toast.success("分析结果已删除");
-		} catch (error) {
-			console.error("Failed to delete analysis result:", error);
-			toast.error("删除分析结果失败");
-		}
-	};
-
+	
 	const handleUpdateMetadata = async (connectionId: string) => {
 		try {
 			// 这里我们可以直接调用后端API，但为了保持一致性和更好的用户体验，
@@ -454,6 +441,22 @@ function App() {
 		}
 	};
 
+	const handleNavigateToAnalysisDetail = (result: any) => {
+		setPreviousStep(currentStep);
+		setCurrentAnalysisResult(result);
+		setCurrentStep("analysis_detail");
+	};
+
+	const handleBackFromAnalysisDetail = () => {
+		setCurrentAnalysisResult(null);
+		if (previousStep) {
+			setCurrentStep(previousStep);
+			setPreviousStep(null);
+		} else {
+			setCurrentStep("tasks");
+		}
+	};
+
 	return (
 		<div className="h-screen flex bg-white">
 			<Toaster />
@@ -462,7 +465,6 @@ function App() {
 			<Sidebar
 				onAddConnection={handleAddConnection}
 				onGoHome={handleGoHome}
-				onGoToReports={handleGoToReports}
 				onGoToTasks={handleGoToTasks}
 			/>
 
@@ -534,17 +536,18 @@ function App() {
 					/>
 				)}
 
-				{currentStep === "reports" && (
-					<AnalysisReportsPage
-						connectionId={currentConnection?.id || ""}
-						onGetAnalysisResults={GetAnalysisResults}
-						onGetDatabaseConnections={GetDatabaseConnections}
-						onBack={handleGoHome}
-						onDeleteAnalysisResult={handleDeleteAnalysisResult}
+				{currentStep === "tasks" && (
+					<TaskManagementPage
+						onNavigateToAnalysisDetail={handleNavigateToAnalysisDetail}
 					/>
 				)}
 
-				{currentStep === "tasks" && <TaskManagementPage />}
+				{currentStep === "analysis_detail" && (
+					<AnalysisDetailPage
+						result={currentAnalysisResult}
+						onBack={handleBackFromAnalysisDetail}
+					/>
+				)}
 			</div>
 		</div>
 	);

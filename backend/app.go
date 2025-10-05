@@ -624,6 +624,7 @@ func (a *App) GetTaskTables(taskID string) ([]map[string]interface{}, error) {
 			"id":             table.ID,
 			"taskId":         table.TaskID,
 			"tableId":        table.TableID,
+			"tblStatus":      table.TblStatus,
 			"addedAt":        table.AddedAt,
 			"connectionId":   table.ConnectionID,
 			"connectionName": table.ConnectionName,
@@ -667,6 +668,264 @@ func (a *App) GetAllConnectionsWithMetadata() ([]map[string]interface{}, error) 
 // LogFrontendAction 前端调用的日志记录方法
 func (a *App) LogFrontendAction(module, action, details string) {
 	LogUserAction(module, action, details)
+}
+
+// StartTaskAnalysis 开始任务分析
+func (a *App) StartTaskAnalysis(taskID string) (map[string]interface{}, error) {
+	logger := GetLogger()
+	logger.SetModuleName("APP")
+	logger.LogInfo("START_ANALYSIS", fmt.Sprintf("开始任务分析 - %s", taskID))
+
+	if a.storageManager == nil {
+		return map[string]interface{}{
+			"status":  "error",
+			"message": "存储管理器不可用",
+		}, fmt.Errorf("storage manager not available")
+	}
+
+	// 获取任务下的所有表
+	taskTables, err := a.storageManager.GetTaskTables(taskID)
+	if err != nil {
+		logger.LogError("START_ANALYSIS", fmt.Sprintf("获取任务表失败 - %s: %s", taskID, err.Error()))
+		return map[string]interface{}{
+			"status":  "error",
+			"message": "获取任务表失败",
+		}, fmt.Errorf("failed to get task tables: %w", err)
+	}
+
+	// 筛选出状态为"待分析"的表
+	var pendingTables []*TaskTableDetail
+	logger.LogInfo("START_ANALYSIS", fmt.Sprintf("获取到 %d 张表", len(taskTables)))
+
+	for _, table := range taskTables {
+		logger.LogInfo("START_ANALYSIS", fmt.Sprintf("表状态检查 - 表名: %s, 状态: '%s', TaskTableID: %s", table.TableName, table.TblStatus, table.ID))
+		if table.TblStatus == "待分析" {
+			pendingTables = append(pendingTables, table)
+			logger.LogInfo("START_ANALYSIS", fmt.Sprintf("找到待分析表 - %s", table.TableName))
+		}
+	}
+
+	if len(pendingTables) == 0 {
+		return map[string]interface{}{
+			"status":  "success",
+			"message": "没有需要分析的表",
+			"count":   0,
+		}, nil
+	}
+
+	// 获取数据库连接配置
+	connections, err := a.storageManager.GetConnections()
+	if err != nil {
+		logger.LogError("START_ANALYSIS", fmt.Sprintf("获取数据库连接失败 - %s", err.Error()))
+		return map[string]interface{}{
+			"status":  "error",
+			"message": "获取数据库连接失败",
+		}, fmt.Errorf("failed to get connections: %w", err)
+	}
+
+	logger.LogInfo("START_ANALYSIS", fmt.Sprintf("获取到 %d 个数据库连接配置", len(connections)))
+
+	// 创建数据库配置映射
+	connConfigs := make(map[string]*DatabaseConfig)
+	for _, conn := range connections {
+		connConfigs[conn.ID] = &conn
+		logger.LogInfo("START_ANALYSIS", fmt.Sprintf("数据库连接映射 - %s -> %s", conn.ID, conn.Name))
+	}
+
+	// 为每张表创建分析任务
+	successCount := 0
+	for _, table := range pendingTables {
+		logger.LogInfo("START_ANALYSIS", fmt.Sprintf("处理表 - %s, ConnectionID: %s, TableID: %s", table.TableName, table.ConnectionID, table.TableID))
+
+		// 获取数据库配置
+		dbConfig, exists := connConfigs[table.ConnectionID]
+		if !exists {
+			logger.LogError("START_ANALYSIS", fmt.Sprintf("数据库连接不存在 - %s, 可用连接: %v", table.ConnectionID, getAvailableConnectionIDs(connections)))
+			continue
+		}
+
+		logger.LogInfo("START_ANALYSIS", fmt.Sprintf("找到数据库配置 - %s, 将创建分析任务", dbConfig.Name))
+
+		// 创建分析任务
+		err = a.taskManager.CreateAnalysisTasksForTable(
+			taskID,
+			table.ID,      // taskTableID (tasks_tbls表的ID)
+			table.TableID, // tableID (metadata_tables表的ID)
+			table.TableName,
+			table.ConnectionID,
+			dbConfig,
+		)
+
+		if err != nil {
+			logger.LogError("START_ANALYSIS", fmt.Sprintf("创建分析任务失败 - 表: %s, 错误: %s", table.TableName, err.Error()))
+			continue
+		}
+
+		successCount++
+		logger.LogInfo("START_ANALYSIS", fmt.Sprintf("创建分析任务成功 - 表: %s", table.TableName))
+	}
+
+	return map[string]interface{}{
+		"status":  "success",
+		"message": fmt.Sprintf("成功启动 %d 个表的分析", successCount),
+		"count":   successCount,
+	}, nil
+}
+
+// getAvailableConnectionIDs 获取可用的数据库连接ID列表
+func getAvailableConnectionIDs(connections []DatabaseConfig) []string {
+	var ids []string
+	for _, conn := range connections {
+		ids = append(ids, conn.ID)
+	}
+	return ids
+}
+
+// CancelTableAnalysis 取消表分析
+func (a *App) CancelTableAnalysis(taskID, taskTableID string) (map[string]interface{}, error) {
+	logger := GetLogger()
+	logger.SetModuleName("APP")
+	logger.LogInfo("CANCEL_ANALYSIS", fmt.Sprintf("取消表分析 - 任务: %s, 表: %s", taskID, taskTableID))
+
+	if a.taskManager == nil {
+		return map[string]interface{}{
+			"status":  "error",
+			"message": "任务管理器不可用",
+		}, fmt.Errorf("task manager not available")
+	}
+
+	// 获取任务表信息
+	taskTables, err := a.storageManager.GetTaskTables(taskID)
+	if err != nil {
+		return map[string]interface{}{
+			"status":  "error",
+			"message": "获取任务表失败",
+		}, fmt.Errorf("failed to get task tables: %w", err)
+	}
+
+	// 找到对应的表
+	var targetTable *TaskTableDetail
+	for _, table := range taskTables {
+		if table.ID == taskTableID {
+			targetTable = table
+			break
+		}
+	}
+
+	if targetTable == nil {
+		return map[string]interface{}{
+			"status":  "error",
+			"message": "表不存在",
+		}, fmt.Errorf("table not found")
+	}
+
+	// 如果表状态是"分析中"，需要取消正在执行的任务
+	if targetTable.TblStatus == "分析中" {
+		// 找到对应的任务并取消
+		tasks := a.taskManager.GetTasksByDatabase(targetTable.ConnectionID)
+		for _, task := range tasks {
+			if task.TaskID == taskID && task.TableID == targetTable.TableID {
+				err = a.taskManager.CancelTask(task.ID)
+				if err != nil {
+					logger.LogError("CANCEL_ANALYSIS", fmt.Sprintf("取消任务失败 - %s", err.Error()))
+					return map[string]interface{}{
+						"status":  "error",
+						"message": "取消分析任务失败",
+					}, fmt.Errorf("failed to cancel task: %w", err)
+				}
+				break
+			}
+		}
+	}
+
+	// 更新表状态为"待分析"
+	err = a.storageManager.UpdateTaskTableStatus(taskID, taskTableID, "待分析")
+	if err != nil {
+		logger.LogError("CANCEL_ANALYSIS", fmt.Sprintf("更新表状态失败 - %s", err.Error()))
+		return map[string]interface{}{
+			"status":  "error",
+			"message": "更新表状态失败",
+		}, fmt.Errorf("failed to update table status: %w", err)
+	}
+
+	return map[string]interface{}{
+		"status":  "success",
+		"message": "表分析已取消",
+	}, nil
+}
+
+// GetTableAnalysisResult 获取表分析结果
+func (a *App) GetTableAnalysisResult(taskID, taskTableID string) (map[string]interface{}, error) {
+	logger := GetLogger()
+	logger.SetModuleName("APP")
+	logger.LogInfo("GET_RESULT", fmt.Sprintf("获取表分析结果 - 任务: %s, 表: %s", taskID, taskTableID))
+
+	if a.storageManager == nil {
+		logger.LogError("GET_RESULT", "存储管理器不可用")
+		return map[string]interface{}{
+			"status":  "error",
+			"message": "存储管理器不可用",
+		}, fmt.Errorf("storage manager not available")
+	}
+
+	// 获取任务表信息
+	taskTables, err := a.storageManager.GetTaskTables(taskID)
+	if err != nil {
+		logger.LogError("GET_RESULT", fmt.Sprintf("获取任务表失败 - %s", err.Error()))
+		return map[string]interface{}{
+			"status":  "error",
+			"message": "获取任务表失败",
+		}, fmt.Errorf("failed to get task tables: %w", err)
+	}
+
+	logger.LogInfo("GET_RESULT", fmt.Sprintf("获取到 %d 个任务表", len(taskTables)))
+
+	// 找到对应的表
+	var targetTable *TaskTableDetail
+	for _, table := range taskTables {
+		logger.LogInfo("GET_RESULT", fmt.Sprintf("检查表: ID=%s, TableID=%s", table.ID, table.TableID))
+		if table.TableID == taskTableID {
+			targetTable = table
+			break
+		}
+	}
+
+	if targetTable == nil {
+		logger.LogError("GET_RESULT", fmt.Sprintf("表不存在 - taskTableID: %s", taskTableID))
+		return map[string]interface{}{
+			"status":  "error",
+			"message": "表不存在",
+		}, fmt.Errorf("table not found")
+	}
+
+	logger.LogInfo("GET_RESULT", fmt.Sprintf("找到目标表: %s, TableID=%s", targetTable.TableName, targetTable.TableID))
+
+	// 获取分析结果
+	result, err := a.storageManager.GetTaskTableAnalysisResult(taskID, targetTable.TableID)
+	if err != nil {
+		logger.LogError("GET_RESULT", fmt.Sprintf("获取分析结果失败 - %s", err.Error()))
+		return map[string]interface{}{
+			"status":  "error",
+			"message": "获取分析结果失败",
+		}, fmt.Errorf("failed to get analysis result: %w", err)
+	}
+
+	logger.LogInfo("GET_RESULT", fmt.Sprintf("成功获取分析结果: ID=%s, TableName=%s, RowCount=%d", result.ID, result.TableName, result.Results["row_count"]))
+
+	// 添加连接信息
+	response := map[string]interface{}{
+		"status":         "success",
+		"results":        result.Results,
+		"connectionName": targetTable.ConnectionName,
+		"tableName":      targetTable.TableName,
+		"tableComment":   targetTable.TableComment,
+		"rowCount":       targetTable.RowCount,
+		"tableSize":      targetTable.TableSize,
+		"columnCount":    targetTable.ColumnCount,
+	}
+
+	logger.LogInfo("GET_RESULT", fmt.Sprintf("返回响应 - status=%s, rowCount=%d, columnCount=%d", response["status"], response["rowCount"], response["columnCount"]))
+	return response, nil
 }
 
 // Greet returns a greeting for the given name
