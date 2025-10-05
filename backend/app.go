@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -922,9 +923,109 @@ func (a *App) GetTableAnalysisResult(taskID, taskTableID string) (map[string]int
 		"rowCount":       targetTable.RowCount,
 		"tableSize":      targetTable.TableSize,
 		"columnCount":    targetTable.ColumnCount,
+		"resultId":       result.ID,  // 添加结果ID用于获取增强数据
 	}
 
 	logger.LogInfo("GET_RESULT", fmt.Sprintf("返回响应 - status=%s, rowCount=%d, columnCount=%d", response["status"], response["rowCount"], response["columnCount"]))
+	return response, nil
+}
+
+// GetEnhancedAnalysisResult 获取增强的分析结果（包含完整元数据）
+func (a *App) GetEnhancedAnalysisResult(taskID, taskTableID string) (map[string]interface{}, error) {
+	logger := GetLogger()
+	logger.SetModuleName("APP")
+	logger.LogInfo("GET_ENHANCED_RESULT", fmt.Sprintf("获取增强分析结果 - 任务: %s, 表: %s", taskID, taskTableID))
+
+	if a.storageManager == nil {
+		logger.LogError("GET_ENHANCED_RESULT", "存储管理器不可用")
+		return map[string]interface{}{
+			"status":  "error",
+			"message": "存储管理器不可用",
+		}, fmt.Errorf("storage manager not available")
+	}
+
+	// 获取任务表信息
+	taskTables, err := a.storageManager.GetTaskTables(taskID)
+	if err != nil {
+		logger.LogError("GET_ENHANCED_RESULT", fmt.Sprintf("获取任务表失败 - %s", err.Error()))
+		return map[string]interface{}{
+			"status":  "error",
+			"message": "获取任务表失败",
+		}, fmt.Errorf("failed to get task tables: %w", err)
+	}
+
+	// 找到对应的表
+	var targetTable *TaskTableDetail
+	for _, table := range taskTables {
+		if table.TableID == taskTableID {
+			targetTable = table
+			break
+		}
+	}
+
+	if targetTable == nil {
+		logger.LogError("GET_ENHANCED_RESULT", fmt.Sprintf("表不存在 - taskTableID: %s", taskTableID))
+		return map[string]interface{}{
+			"status":  "error",
+			"message": "表不存在",
+		}, fmt.Errorf("table not found")
+	}
+
+	// 获取分析结果
+	result, err := a.storageManager.GetTaskTableAnalysisResult(taskID, targetTable.TableID)
+	if err != nil {
+		logger.LogError("GET_ENHANCED_RESULT", fmt.Sprintf("获取分析结果失败 - %s", err.Error()))
+		return map[string]interface{}{
+			"status":  "error",
+			"message": "获取分析结果失败",
+		}, fmt.Errorf("failed to get analysis result: %w", err)
+	}
+
+	// 获取增强的分析结果
+	enhancedResult, err := a.storageManager.GetEnhancedAnalysisResult(result.ID)
+	if err != nil {
+		logger.LogError("GET_ENHANCED_RESULT", fmt.Sprintf("获取增强分析结果失败 - %s", err.Error()))
+		return map[string]interface{}{
+			"status":  "error",
+			"message": "获取增强分析结果失败",
+		}, fmt.Errorf("failed to get enhanced analysis result: %w", err)
+	}
+
+	logger.LogInfo("GET_ENHANCED_RESULT", fmt.Sprintf("成功获取增强分析结果 - 表: %s, 列数: %d", enhancedResult.TableName, len(enhancedResult.ColumnsInfo)))
+
+	// 构建列信息响应
+	columnsResponse := make([]map[string]interface{}, 0)
+	for _, column := range enhancedResult.ColumnsInfo {
+		columnResponse := map[string]interface{}{
+			"name":    column.ColumnName,
+			"type":    column.ColumnType,
+			"comment": column.ColumnComment,
+			"ordinal": column.ColumnOrdinal,
+		}
+		columnsResponse = append(columnsResponse, columnResponse)
+	}
+
+	// 构建响应
+	response := map[string]interface{}{
+		"status":         "success",
+		"results":        enhancedResult.Results,
+		"tableName":      enhancedResult.TableName,
+		"tableComment":   enhancedResult.TableComment,
+		"columns":        columnsResponse,
+		"databaseId":     enhancedResult.DatabaseID,
+		"analysisStatus": enhancedResult.Status,
+		"startedAt":      enhancedResult.StartedAt,
+		"completedAt":    enhancedResult.CompletedAt,
+		"duration":       enhancedResult.Duration.Seconds(),
+		"rules":          enhancedResult.Rules,
+	}
+	logger.LogInfo("GET_ENHANCED_RESPONSE", fmt.Sprintf("Response is %s", response))
+	logger.LogInfo("GET_ENHANCED_RESULT", fmt.Sprintf("返回增强响应 - 表: %s, 列数: %d", response["tableName"], len(columnsResponse)))
+
+	// 完整输出响应数据用于调试
+	responseJSON, _ := json.Marshal(response)
+	logger.LogInfo("GET_ENHANCED_RESULT", fmt.Sprintf("完整响应数据: %s", string(responseJSON)))
+
 	return response, nil
 }
 

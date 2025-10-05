@@ -518,6 +518,111 @@ func (sm *StorageManager) DeleteAnalysisResult(resultID string) error {
 	return err
 }
 
+// EnhancedAnalysisResult 增强的分析结果，包含完整的元数据信息
+type EnhancedAnalysisResult struct {
+	*AnalysisResult
+	TableComment   string                    `json:"tableComment"`
+	ColumnsInfo    []*MetadataColumnInfo     `json:"columnsInfo"`
+}
+
+// GetEnhancedAnalysisResult 获取增强的分析结果（包含完整元数据）
+func (sm *StorageManager) GetEnhancedAnalysisResult(resultID string) (*EnhancedAnalysisResult, error) {
+	logger := GetLogger()
+	logger.SetModuleName("STORAGE")
+	logger.LogInfo("ENHANCED_RESULT", fmt.Sprintf("开始获取增强分析结果 - resultID: %s", resultID))
+
+	// 首先获取基本分析结果
+	result, err := sm.GetAnalysisResult(resultID)
+	if err != nil {
+		logger.LogError("ENHANCED_RESULT", fmt.Sprintf("获取基本分析结果失败 - %s", err.Error()))
+		return nil, err
+	}
+
+	logger.LogInfo("ENHANCED_RESULT", fmt.Sprintf("获取到基本分析结果 - DatabaseID: %s, TableName: %s", result.DatabaseID, result.TableName))
+
+	// 根据表名获取表ID
+	tableID, err := sm.getTableIDByName(result.DatabaseID, result.TableName)
+	if err != nil {
+		logger.LogError("ENHANCED_RESULT", fmt.Sprintf("获取表ID失败 - DatabaseID: %s, TableName: %s, Error: %s", result.DatabaseID, result.TableName, err.Error()))
+		return nil, fmt.Errorf("failed to get table ID: %w", err)
+	}
+
+	logger.LogInfo("ENHANCED_RESULT", fmt.Sprintf("获取到表ID - tableID: %s", tableID))
+
+	// 获取表信息
+	tableInfo, err := sm.getTableInfo(tableID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get table info: %w", err)
+	}
+
+	// 获取列信息
+	columnsInfo, err := sm.GetMetadataColumns(tableID)
+	if err != nil {
+		logger.LogError("ENHANCED_RESULT", fmt.Sprintf("获取列信息失败 - tableID: %s, Error: %s", tableID, err.Error()))
+		return nil, fmt.Errorf("failed to get columns info: %w", err)
+	}
+
+	logger.LogInfo("ENHANCED_RESULT", fmt.Sprintf("获取到列信息 - 列数: %d", len(columnsInfo)))
+
+	enhancedResult := &EnhancedAnalysisResult{
+		AnalysisResult: result,
+		TableComment:   tableInfo.TableComment,
+		ColumnsInfo:    columnsInfo,
+	}
+
+	// 打印列信息调试
+	for i, col := range columnsInfo {
+		logger.LogInfo("ENHANCED_RESULT", fmt.Sprintf("列%d: Name=%s, Type=%s, Comment=%s, Ordinal=%d",
+			i+1, col.ColumnName, col.ColumnType, col.ColumnComment, col.ColumnOrdinal))
+	}
+
+	logger.LogInfo("ENHANCED_RESULT", "增强分析结果构建完成")
+	return enhancedResult, nil
+}
+
+// getTableIDByName 根据连接ID和表名获取表ID
+func (sm *StorageManager) getTableIDByName(connectionID, tableName string) (string, error) {
+	query := `
+		SELECT id
+		FROM metadata_tables
+		WHERE connection_id = ? AND table_name = ?
+	`
+
+	var tableID string
+	err := sm.db.QueryRow(query, connectionID, tableName).Scan(&tableID)
+	if err != nil {
+		return "", err
+	}
+
+	return tableID, nil
+}
+
+// getTableInfo 获取表信息
+func (sm *StorageManager) getTableInfo(tableID string) (*MetadataTableInfo, error) {
+	query := `
+		SELECT id, connection_id, table_name, table_comment, table_size, row_count, column_count
+		FROM metadata_tables
+		WHERE id = ?
+	`
+
+	var tableInfo MetadataTableInfo
+	err := sm.db.QueryRow(query, tableID).Scan(
+		&tableInfo.ID,
+		&tableInfo.ConnectionID,
+		&tableInfo.TableName,
+		&tableInfo.TableComment,
+		&tableInfo.TableSize,
+		&tableInfo.RowCount,
+		&tableInfo.ColumnCount,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &tableInfo, nil
+}
+
 // GetTaskTableAnalysisResult 获取特定任务表的分析结果
 func (sm *StorageManager) GetTaskTableAnalysisResult(taskID, tableID string) (*AnalysisResult, error) {
 	query := `

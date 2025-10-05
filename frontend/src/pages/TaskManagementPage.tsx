@@ -280,10 +280,24 @@ export function TaskManagementPage({ onNavigateToAnalysisDetail }: TaskManagemen
         note: "tableId应该是tasks_tbls.table_id"
       });
 
-      const { GetTableAnalysisResult } = await import(
+      const { GetTableAnalysisResult, GetEnhancedAnalysisResult } = await import(
         "../../wailsjs/go/backend/App"
       );
-      const result = await GetTableAnalysisResult(selectedTask.id, tableId);
+
+      // 直接获取增强的分析结果
+      let result;
+      try {
+        console.log("正在获取增强分析结果，taskId:", selectedTask.id, "tableId:", tableId);
+        const enhancedResult = await GetEnhancedAnalysisResult(selectedTask.id, tableId);
+        console.log("获取增强分析结果成功:", enhancedResult);
+        result = enhancedResult;
+      } catch (error) {
+        console.warn("获取增强分析结果失败，回退到基本结果:", error);
+        // 回退到基本结果
+        const basicResult = await GetTableAnalysisResult(selectedTask.id, tableId);
+        console.log("获取基本分析结果成功:", basicResult);
+        result = basicResult;
+      }
 
       console.log("获取分析结果成功:", result);
 
