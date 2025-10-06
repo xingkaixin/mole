@@ -2,6 +2,9 @@
 - 当技术资料不完整时，不要瞎猜，通过`context7`提供的资料回答，如果依然不确认，就说“抱歉，我无法回答这个问题。”
 - 任何时候都要拆解任务，创建To-do List，明确每个任务的目标和步骤。
 - 对于应用的测试，告诉我，我会去执行并测试
+- Source files in this repo can be very long.  Check their size to consider if you really need to read the entire thing. ALWAYS prefer using `rg` rather than `find` or `grep`.
+- NEVER create throw away idea exploration files in the top directory of the repo. Use a `.claude/sandbox/` directory for those. They will never be committed.
+
 
 ## About
 
