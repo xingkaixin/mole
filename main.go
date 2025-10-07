@@ -35,7 +35,10 @@ func main() {
 			logger := backend.GetLogger()
 			if logger != nil {
 				logger.LogInfo("MAIN", "应用关闭 - Wails应用即将退出")
-				logger.Close()
+				if err := logger.Close(); err != nil {
+					// 日志关闭失败不影响应用退出，但记录到控制台
+					fmt.Printf("警告: 日志文件关闭失败: %v\n", err)
+				}
 			}
 			return false
 		},
