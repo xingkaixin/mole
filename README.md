@@ -59,30 +59,6 @@ bunx --bun shadcn@latest add card
 
 See the [Shadcn UI documentation](https://ui.shadcn.com/docs/components) for a full list of available components and usage instructions.
 
-## Library Versions
-
-Below are the main library versions currently in use:
-
-| Library                          | Version    |
-| -------------------------------- | ---------- |
-| react                            | ^18.3.1    |
-| react-dom                        | ^18.3.1    |
-| typescript                       | ^5.8.3     |
-| vite                             | ^6.3.5     |
-| @vitejs/plugin-react             | ^4.5.0     |
-| tailwindcss                      | ^4.1.8     |
-| @tailwindcss/vite                | ^4.1.8     |
-| tw-animate-css                   | ^1.3.3     |
-| class-variance-authority         | ^0.7.1     |
-| clsx                             | ^2.1.1     |
-| tailwind-merge                   | ^3.3.0     |
-| @radix-ui/react-aspect-ratio     | ^1.1.7     |
-| @radix-ui/react-dropdown-menu    | ^2.1.15    |
-| @radix-ui/react-slot             | ^1.2.3     |
-| lucide-react                     | ^0.511.0   |
-| next-themes                      | ^0.4.6     |
-| sonner                           | ^2.0.5     |
-| @biomejs/biome                   | ^1.9.4     |
 
 
 ## Makefile Commands
