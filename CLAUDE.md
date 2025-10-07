@@ -2,9 +2,23 @@
 - 当技术资料不完整时，不要瞎猜，通过`context7`提供的资料回答，如果依然不确认，就说“抱歉，我无法回答这个问题。”
 - 任何时候都要拆解任务，创建To-do List，明确每个任务的目标和步骤。
 - 对于应用的测试，告诉我，我会去执行并测试
-- Source files in this repo can be very long.  Check their size to consider if you really need to read the entire thing. ALWAYS prefer using `rg` rather than `find` or `grep`.
 - NEVER create throw away idea exploration files in the top directory of the repo. Use a `.claude/sandbox/` directory for those. They will never be committed.
 
+# Code Search Guidelines for Large Repositories
+This repository contains large source files that can be expensive to read entirely. 
+Follow these search optimization principles:
+## Preferred Search Tools
+ALWAYS use modern search tools over traditional methods:
+1. **ripgrep (rg)** - A fast, line-oriented search tool that:
+   - Respects .gitignore rules automatically
+   - Skips binary files by default
+   - Provides parallel search performance
+   - Supports advanced regex patterns
+2. **ast-grep (sg)** - A structural code search tool that:
+   - Understands code syntax and AST structure
+   - Enables semantic-aware pattern matching
+   - Supports cross-language structural refactoring
+   - Performs syntax-aware code transformations
 
 ## About
 
