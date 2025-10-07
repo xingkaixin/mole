@@ -6,13 +6,7 @@ import { AnalysisDetailPage } from "@/pages/AnalysisDetailPage";
 import { ConfigPage } from "@/pages/ConfigPage";
 import { TaskManagementPage } from "@/pages/TaskManagementPage";
 import { WelcomePage } from "@/pages/WelcomePage";
-import type {
-  AppStep,
-  DatabaseConfig,
-  RuleResult,
-  TableInfo,
-  TableMetadata,
-} from "@/types";
+import type { AppStep, DatabaseConfig, RuleResult, TableInfo } from "@/types";
 import {
   ConnectDatabase,
   DeleteDatabaseConnection,
@@ -44,9 +38,8 @@ function App() {
     concurrency: 5, // 默认并发度
   });
   const [connectionStatus, setConnectionStatus] = useState<string>("");
-  const [tables, setTables] = useState<TableInfo[]>([]);
-  const [selectedTables, setSelectedTables] = useState<string[]>([]);
-  const [tempSelectedTables, setTempSelectedTables] = useState<string[]>([]);
+  const [_tables, setTables] = useState<TableInfo[]>([]);
+  const [_selectedTables, setSelectedTables] = useState<string[]>([]);
   const [_analysisResults, _setAnalysisResults] = useState<RuleResult[]>([]);
   const [isAddingConnection, setIsAddingConnection] = useState(false);
 
