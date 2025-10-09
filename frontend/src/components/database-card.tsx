@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { DatabaseConfig } from "@/types";
 import { createLogger } from "@/lib/logger";
+import { getDatabaseTypeLabel } from "@/lib/databaseTypes";
 
 type DatabaseCardProps = {
 	connection: DatabaseConfig;
@@ -162,10 +163,10 @@ export function DatabaseCard({
 				{connection.name}
 			</h3>
 			<div className="space-y-1 text-sm">
-				<p className="text-muted-foreground">
-					<span className="text-foreground font-medium">类型:</span>{" "}
-					{connection.type}
-				</p>
+		<p className="text-muted-foreground">
+			<span className="text-foreground font-medium">类型:</span>{" "}
+			{getDatabaseTypeLabel(connection.type)}
+		</p>
 				<p className="text-muted-foreground">
 					<span className="text-foreground font-medium">主机:</span>{" "}
 					{connection.host}:{connection.port}

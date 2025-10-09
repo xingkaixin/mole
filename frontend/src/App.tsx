@@ -8,6 +8,32 @@ import { TaskManagementPage } from "@/pages/TaskManagementPage";
 import { WelcomePage } from "@/pages/WelcomePage";
 import type { AppStep, DatabaseConfig, RuleResult, TableInfo } from "@/types";
 import {
+	DEFAULT_DATABASE_TYPE,
+	getDefaultPort,
+	normalizeDatabaseType,
+} from "@/lib/databaseTypes";
+
+const createDefaultConfig = (): DatabaseConfig => ({
+	id: "",
+	name: "",
+	type: DEFAULT_DATABASE_TYPE,
+	host: "localhost",
+	port: getDefaultPort(DEFAULT_DATABASE_TYPE),
+	username: "root",
+	password: "",
+	database: "",
+	concurrency: 5,
+});
+
+const normalizeConfigRecord = (config: DatabaseConfig): DatabaseConfig => {
+	const normalizedType = normalizeDatabaseType(config.type);
+	return {
+		...config,
+		type: normalizedType,
+		port: config.port || getDefaultPort(normalizedType),
+	};
+};
+import {
   ConnectDatabase,
   DeleteDatabaseConnection,
   GetDatabaseConnections,
@@ -26,17 +52,7 @@ function App() {
   const [currentAnalysisResult, setCurrentAnalysisResult] = useState<
     any | null
   >(null);
-  const [dbConfig, setDbConfig] = useState<DatabaseConfig>({
-    id: "",
-    name: "",
-    type: "mysql",
-    host: "localhost",
-    port: 3306,
-    username: "root",
-    password: "",
-    database: "",
-    concurrency: 5, // 默认并发度
-  });
+  const [dbConfig, setDbConfig] = useState<DatabaseConfig>(() => createDefaultConfig());
   const [connectionStatus, setConnectionStatus] = useState<string>("");
   const [_tables, setTables] = useState<TableInfo[]>([]);
   const [_selectedTables, setSelectedTables] = useState<string[]>([]);
@@ -48,7 +64,7 @@ function App() {
     const loadConnections = async () => {
       try {
         const savedConnections = await GetDatabaseConnections();
-        setConnections(savedConnections || []);
+        setConnections((savedConnections || []).map(normalizeConfigRecord));
       } catch (error) {
         console.error("Failed to load connections:", error);
         setConnections([]);
@@ -59,7 +75,7 @@ function App() {
 
   // 保存连接到后端存储
   const saveConnections = async (newConnections: DatabaseConfig[]) => {
-    setConnections(newConnections);
+    setConnections(newConnections.map(normalizeConfigRecord));
     // 注意：这里我们不再需要手动保存到localStorage
     // 每个连接在创建时已经通过SaveDatabaseConnection保存到后端
   };
@@ -70,7 +86,9 @@ function App() {
   ) => {
     setDbConfig((prev) => ({
       ...prev,
-      [field]: value,
+      [field]: field === "type" && typeof value === "string"
+        ? normalizeDatabaseType(value)
+        : value,
     }));
   };
 
@@ -96,11 +114,11 @@ function App() {
     try {
       await TestDatabaseConnection(dbConfig);
 
-      const connectionToSave: DatabaseConfig = {
+      const connectionToSave: DatabaseConfig = normalizeConfigRecord({
         ...dbConfig,
         // 如果是新增连接，生成新ID；如果是编辑，保持原ID
         id: dbConfig.id || Date.now().toString(),
-      };
+      });
 
       // 保存到后端存储
       await SaveDatabaseConnection(connectionToSave);
@@ -133,9 +151,9 @@ function App() {
   const duplicateConnection = async (connection: DatabaseConfig) => {
     try {
       const duplicatedConnection: DatabaseConfig = {
-        ...connection,
-        id: Date.now().toString(), // 生成新的ID
-        name: `${connection.name} _duplicate`, // 添加duplicate后缀
+        ...normalizeConfigRecord(connection),
+        id: Date.now().toString(),
+        name: `${connection.name} _duplicate`,
       };
 
       // 保存到后端存储
@@ -207,24 +225,14 @@ function App() {
   };
 
   const handleAddConnection = () => {
-    setDbConfig({
-      id: "",
-      name: "",
-      type: "mysql",
-      host: "localhost",
-      port: 3306,
-      username: "root",
-      password: "",
-      database: "",
-      concurrency: 5,
-    });
+    setDbConfig(createDefaultConfig());
     setConnectionStatus("");
     setIsAddingConnection(true);
     setCurrentStep("config");
   };
 
   const handleEditConnection = (connection: DatabaseConfig) => {
-    setDbConfig(connection);
+    setDbConfig(normalizeConfigRecord(connection));
     setConnectionStatus("");
     setIsAddingConnection(false);
     setCurrentStep("config");

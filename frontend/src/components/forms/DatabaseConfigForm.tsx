@@ -13,6 +13,11 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import type { DatabaseConfig } from "@/types";
+import {
+	DATABASE_TYPES,
+	getDefaultPort,
+	normalizeDatabaseType,
+} from "@/lib/databaseTypes";
 
 interface DatabaseConfigFormProps {
 	config: DatabaseConfig;
@@ -34,6 +39,12 @@ export function DatabaseConfigForm({
 	connectionStatus,
 }: DatabaseConfigFormProps) {
 	const idPrefix = useId();
+
+	const handleTypeChange = (value: string) => {
+		const normalized = normalizeDatabaseType(value);
+		onConfigChange("type", normalized);
+		onConfigChange("port", getDefaultPort(normalized));
+	};
 
 	return (
 		<Card className="p-6 max-w-2xl mx-auto">
@@ -68,15 +79,19 @@ export function DatabaseConfigForm({
 				{/* 数据库类型 - 固定为 MySQL */}
 				<div className="space-y-2">
 					<Label htmlFor={`${idPrefix}-type`}>数据库类型</Label>
-					<Select
-						value={config.type}
-						onValueChange={(value) => onConfigChange("type", value)}
-					>
+				<Select
+					value={normalizeDatabaseType(config.type)}
+					onValueChange={handleTypeChange}
+				>
 						<SelectTrigger id={`${idPrefix}-type`}>
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="MySQL">MySQL</SelectItem>
+						{DATABASE_TYPES.map((dbType) => (
+							<SelectItem key={dbType.value} value={dbType.value}>
+								{dbType.label}
+							</SelectItem>
+						))}
 						</SelectContent>
 					</Select>
 				</div>

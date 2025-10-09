@@ -20,6 +20,12 @@ import {
 } from "@/components/ui/select";
 import type { DatabaseConfig } from "@/types";
 import { createLogger } from "@/lib/logger";
+import {
+	DATABASE_TYPES,
+	DEFAULT_DATABASE_TYPE,
+	getDefaultPort,
+	normalizeDatabaseType,
+} from "@/lib/databaseTypes";
 
 type ConnectionDialogProps = {
 	open: boolean;
@@ -27,8 +33,6 @@ type ConnectionDialogProps = {
 	connection?: DatabaseConfig | null;
 	onSave: (connection: DatabaseConfig | Omit<DatabaseConfig, "id">) => void;
 };
-
-const DB_TYPES = [{ value: "MySQL", label: "MySQL", defaultPort: "3306" }];
 
 export function ConnectionDialog({
 	open,
@@ -49,9 +53,9 @@ export function ConnectionDialog({
 
 	const [formData, setFormData] = useState({
 		name: "",
-		type: "MySQL",
+		type: DEFAULT_DATABASE_TYPE,
 		host: "",
-		port: 3306,
+		port: getDefaultPort(DEFAULT_DATABASE_TYPE),
 		database: "",
 		username: "",
 		password: "",
@@ -60,11 +64,12 @@ export function ConnectionDialog({
 
 	useEffect(() => {
 		if (connection) {
+			const normalizedType = normalizeDatabaseType(connection.type);
 			setFormData({
 				name: connection.name,
-				type: connection.type,
+				type: normalizedType,
 				host: connection.host,
-				port: connection.port,
+				port: connection.port || getDefaultPort(normalizedType),
 				database: connection.database,
 				username: connection.username,
 				password: connection.password,
@@ -73,9 +78,9 @@ export function ConnectionDialog({
 		} else {
 			setFormData({
 				name: "",
-				type: "MySQL",
+				type: DEFAULT_DATABASE_TYPE,
 				host: "",
-				port: 3306,
+				port: getDefaultPort(DEFAULT_DATABASE_TYPE),
 				database: "",
 				username: "",
 				password: "",
@@ -85,11 +90,12 @@ export function ConnectionDialog({
 	}, [connection]);
 
 	const handleTypeChange = (type: string) => {
-		const dbType = DB_TYPES.find((t) => t.value === type);
+		const normalized = normalizeDatabaseType(type);
+		const defaultPort = getDefaultPort(normalized);
 		setFormData({
 			...formData,
-			type,
-			port: dbType?.defaultPort ? parseInt(dbType.defaultPort, 10) : 3306,
+			type: normalized,
+			port: defaultPort,
 		});
 	};
 
@@ -132,20 +138,19 @@ export function ConnectionDialog({
 
 					<div className="space-y-2">
 						<Label htmlFor={typeId}>数据库类型</Label>
-						<Select
-							value={formData.type}
-							onValueChange={handleTypeChange}
-							key={formData.type} // 强制重新渲染
-						>
+		<Select
+			value={normalizeDatabaseType(formData.type)}
+			onValueChange={handleTypeChange}
+		>
 							<SelectTrigger id={typeId}>
 								<SelectValue placeholder="选择数据库类型" />
 							</SelectTrigger>
 							<SelectContent>
-								{DB_TYPES.map((type) => (
-									<SelectItem key={type.value} value={type.value}>
-										{type.label}
-									</SelectItem>
-								))}
+				{DATABASE_TYPES.map((type) => (
+					<SelectItem key={type.value} value={type.value}>
+						{type.label}
+					</SelectItem>
+				))}
 							</SelectContent>
 						</Select>
 					</div>

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import type { DatabaseConfig } from "@/types";
 import { createLogger } from "@/lib/logger";
+import { getDatabaseTypeLabel } from "@/lib/databaseTypes";
 
 interface WelcomePageProps {
 	connections: DatabaseConfig[];
@@ -54,8 +55,8 @@ export function WelcomePage({
 	});
 
 	// 获取所有唯一的数据库类型
-	const databaseTypes = useMemo(() => {
-		const types = [...new Set(connections.map((conn) => conn.type))];
+const databaseTypes = useMemo(() => {
+    const types = [...new Set(connections.map((conn) => conn.type))];
 		return types.filter(Boolean);
 	}, [connections]);
 
@@ -170,11 +171,11 @@ export function WelcomePage({
 								</SelectTrigger>
 								<SelectContent>
 									<SelectItem value="all">全部类型</SelectItem>
-									{databaseTypes.map((type) => (
-										<SelectItem key={type} value={type}>
-											{type}
-										</SelectItem>
-									))}
+                  {databaseTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {getDatabaseTypeLabel(type)}
+                    </SelectItem>
+                  ))}
 								</SelectContent>
 							</Select>
 						</div>
