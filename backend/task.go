@@ -272,6 +272,16 @@ func (tm *TaskManager) performTableAnalysis(task *AnalysisTask) {
 			return
 		}
 
+		provider := tempDBManager.GetProvider()
+		if provider == nil {
+			fmt.Printf("Failed to resolve database provider for task %s\n", task.ID)
+			tm.mu.Lock()
+			task.Status = TaskStatusFailed
+			task.ErrorMessage = "数据库提供者不可用"
+			tm.mu.Unlock()
+			return
+		}
+
 		// 获取分析规则
 		ruleNames := tm.analysisEngine.GetAvailableRules()
 		if len(ruleNames) > 0 {
@@ -283,7 +293,7 @@ func (tm *TaskManager) performTableAnalysis(task *AnalysisTask) {
 			defer timeoutCancel()
 
 			// 使用带超时的context执行分析
-			analysisResults, err := tm.analysisEngine.ExecuteAnalysis(timeoutCtx, db, task.TableName, task.DatabaseConfig, ruleNames)
+			analysisResults, err := tm.analysisEngine.ExecuteAnalysis(timeoutCtx, db, task.TableName, task.DatabaseConfig, provider, ruleNames)
 
 			// 更新进度为80%
 			tm.updateTaskProgress(task.ID, 80)

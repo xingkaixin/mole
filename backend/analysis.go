@@ -4,14 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 )
 
 // AnalysisRule 分析规则接口
 type AnalysisRule interface {
 	GetName() string
 	GetDescription() string
-	Execute(ctx context.Context, db *sql.DB, tableName string, config *DatabaseConfig) (interface{}, error)
+	Execute(ctx context.Context, db *sql.DB, tableName string, config *DatabaseConfig, provider DatabaseProvider) (interface{}, error)
 }
 
 // RowCountRule 行数统计规则
@@ -25,13 +24,11 @@ func (r *RowCountRule) GetDescription() string {
 	return "统计表的行数"
 }
 
-func (r *RowCountRule) Execute(ctx context.Context, db *sql.DB, tableName string, config *DatabaseConfig) (interface{}, error) {
-	var rowCount int64
-	err := db.QueryRowContext(ctx, fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName)).Scan(&rowCount)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get row count for table %s: %w", tableName, err)
+func (r *RowCountRule) Execute(ctx context.Context, db *sql.DB, tableName string, config *DatabaseConfig, provider DatabaseProvider) (interface{}, error) {
+	if provider == nil {
+		return nil, fmt.Errorf("database provider not available")
 	}
-	return rowCount, nil
+	return provider.ExecuteRowCount(ctx, db, config, tableName)
 }
 
 // NonNullRateRule 非空值率统计规则
@@ -45,67 +42,11 @@ func (r *NonNullRateRule) GetDescription() string {
 	return "统计列的非空值率"
 }
 
-func (r *NonNullRateRule) Execute(ctx context.Context, db *sql.DB, tableName string, config *DatabaseConfig) (interface{}, error) {
-	// 获取表的列信息
-	query := fmt.Sprintf("SHOW COLUMNS FROM %s", tableName)
-	rows, err := db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get columns for table %s: %w", tableName, err)
+func (r *NonNullRateRule) Execute(ctx context.Context, db *sql.DB, tableName string, config *DatabaseConfig, provider DatabaseProvider) (interface{}, error) {
+	if provider == nil {
+		return nil, fmt.Errorf("database provider not available")
 	}
-	defer rows.Close()
-
-	var columns []string
-	for rows.Next() {
-		var columnName string
-		var columnType, nullType, keyType, defaultValue, extraType *string
-		if err := rows.Scan(&columnName, &columnType, &nullType, &keyType, &defaultValue, &extraType); err != nil {
-			continue
-		}
-		columns = append(columns, columnName)
-	}
-
-	if len(columns) == 0 {
-		return make(map[string]float64), nil
-	}
-
-	// 优化方案：构建单个SQL查询计算所有列的非空值率
-	// 利用MySQL布尔表达式特性：true=1, false=0
-	// AVG(column IS NULL) 计算空置率，1 - AVG(column IS NULL) 得到非空值率
-	// 性能提升：从 2N+1 次查询减少到 1 次查询
-	var selectParts []string
-	for _, column := range columns {
-		selectParts = append(selectParts, fmt.Sprintf("1 - AVG(%s IS NULL) as %s", column, column))
-	}
-
-	sqlQuery := fmt.Sprintf("SELECT %s FROM %s", strings.Join(selectParts, ", "), tableName)
-	row := db.QueryRowContext(ctx, sqlQuery)
-
-	// 准备结果容器和扫描器
-	scanners := make([]interface{}, len(columns))
-	for i := range scanners {
-		var rate float64
-		scanners[i] = &rate
-	}
-
-	// 执行单次查询并扫描所有结果
-	if err := row.Scan(scanners...); err != nil {
-		return nil, fmt.Errorf("failed to scan non-null rates: %w", err)
-	}
-
-	// 构建最终结果，确保数据有效性
-	result := make(map[string]float64)
-	for i, column := range columns {
-		rate := *(scanners[i].(*float64))
-		// 数据验证：确保结果在合理范围内 [0, 1]
-		if rate < 0 {
-			rate = 0
-		} else if rate > 1 {
-			rate = 1
-		}
-		result[column] = rate
-	}
-
-	return result, nil
+	return provider.ExecuteNonNullRate(ctx, db, config, tableName)
 }
 
 // AnalysisEngine 分析引擎
@@ -147,10 +88,14 @@ func (e *AnalysisEngine) GetAvailableRules() []string {
 }
 
 // ExecuteAnalysis 执行分析
-func (e *AnalysisEngine) ExecuteAnalysis(ctx context.Context, db *sql.DB, tableName string, config *DatabaseConfig, ruleNames []string) (map[string]interface{}, error) {
+func (e *AnalysisEngine) ExecuteAnalysis(ctx context.Context, db *sql.DB, tableName string, config *DatabaseConfig, provider DatabaseProvider, ruleNames []string) (map[string]interface{}, error) {
 	logger := GetLogger()
 	logger.SetModuleName("ANALYSIS")
 	logger.LogInfo("EXECUTE", fmt.Sprintf("开始执行表分析 - 表: %s, 规则数: %d", tableName, len(ruleNames)))
+
+	if provider == nil {
+		return nil, fmt.Errorf("database provider not available")
+	}
 
 	result := make(map[string]interface{})
 
@@ -162,7 +107,7 @@ func (e *AnalysisEngine) ExecuteAnalysis(ctx context.Context, db *sql.DB, tableN
 		}
 
 		logger.LogInfo("EXECUTE_RULE", fmt.Sprintf("执行规则 - %s.%s", tableName, ruleName))
-		ruleResult, err := rule.Execute(ctx, db, tableName, config)
+		ruleResult, err := rule.Execute(ctx, db, tableName, config, provider)
 		if err != nil {
 			logger.LogError("EXECUTE_RULE", fmt.Sprintf("规则执行失败 - %s.%s: %s", tableName, ruleName, err.Error()))
 			result[ruleName] = map[string]interface{}{
