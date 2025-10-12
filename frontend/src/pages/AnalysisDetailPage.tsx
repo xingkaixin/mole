@@ -1,4 +1,4 @@
-import { ArrowLeft, Database, Search } from "lucide-react";
+import { ArrowLeft, Copy, Database, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -154,6 +154,56 @@ export function AnalysisDetailPage({
 		(a, b) => a.ordinal - b.ordinal,
 	);
 
+	const handleExport = async () => {
+		if (!sortedColumns.length) {
+			toast.info("没有可导出的列数据");
+			return;
+		}
+
+		const tableInfoHeader = ["表名", "表中文名", "表行数"].join("\t");
+		const tableInfoRow = [
+			tableName || "",
+			tableComment || "",
+			rowCount.toString(),
+		].join("\t");
+
+		const columnHeader = [
+			"字段序号",
+			"字段名",
+			"字段中文名",
+			"字段类型",
+			"非空值率",
+		].join("\t");
+
+		const columnRows = sortedColumns.map((column) =>
+			[
+				column.ordinal.toString(),
+				column.name,
+				column.comment || "",
+				column.type,
+				column.nonNullRate !== undefined
+					? `${column.nonNullRate}%`
+					: "",
+			].join("\t"),
+		);
+
+		const tsvContent = [
+			tableInfoHeader,
+			tableInfoRow,
+			"",
+			columnHeader,
+			...columnRows,
+		].join("\n");
+
+		try {
+			await navigator.clipboard.writeText(tsvContent);
+			toast.success("TSV 已复制到剪贴板");
+		} catch (error) {
+			console.error("Failed to copy TSV to clipboard", error);
+			toast.error("复制失败，请检查剪贴板权限");
+		}
+	};
+
 	// 获取表说明
 	const tableComment = enhancedResult?.tableComment || "";
 
@@ -252,11 +302,16 @@ export function AnalysisDetailPage({
 
 			{/* 数据表格 - 占用剩余空间并支持滚动 */}
 			<Card className="flex-1 flex flex-col overflow-hidden">
-				<div className="p-4 border-b border-gray-200">
-					<h3 className="text-lg font-semibold">列信息分析</h3>
-					<p className="text-sm text-gray-500 mt-1">
-						显示 {sortedColumns.length} / {columns.length} 个列
-					</p>
+				<div className="p-4 border-b border-gray-200 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+					<div>
+						<h3 className="text-lg font-semibold">列信息分析</h3>
+						<p className="text-sm text-gray-500 mt-1">
+							显示 {sortedColumns.length} / {columns.length} 个列
+						</p>
+					</div>
+					<Button variant="outline" size="sm" onClick={handleExport}>
+						<Copy className="w-4 h-4 mr-2" /> 导出 TSV
+					</Button>
 				</div>
 
 				<div className="flex-1 overflow-auto">
