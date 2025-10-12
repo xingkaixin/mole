@@ -18,14 +18,14 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import type { DatabaseConfig } from "@/types";
-import { createLogger } from "@/lib/logger";
 import {
 	DATABASE_TYPES,
 	DEFAULT_DATABASE_TYPE,
 	getDefaultPort,
 	normalizeDatabaseType,
 } from "@/lib/databaseTypes";
+import { createLogger } from "@/lib/logger";
+import type { DatabaseConfig } from "@/types";
 
 type ConnectionDialogProps = {
 	open: boolean;
@@ -41,7 +41,7 @@ export function ConnectionDialog({
 	onSave,
 }: ConnectionDialogProps) {
 	// 创建连接对话框日志记录器
-	const logger = createLogger('ConnectionDialog');
+	const logger = createLogger("ConnectionDialog");
 
 	const nameId = useId();
 	const typeId = useId();
@@ -103,8 +103,12 @@ export function ConnectionDialog({
 		e.preventDefault();
 
 		const isEdit = !!connection;
-		const action = isEdit ? '编辑' : '添加';
-		logger.formSubmit('数据库连接', true, `${action}数据库连接 - ${formData.name}`);
+		const action = isEdit ? "编辑" : "添加";
+		logger.formSubmit(
+			"数据库连接",
+			true,
+			`${action}数据库连接 - ${formData.name}`,
+		);
 
 		if (connection) {
 			onSave({ ...formData, id: connection.id });
@@ -138,19 +142,19 @@ export function ConnectionDialog({
 
 					<div className="space-y-2">
 						<Label htmlFor={typeId}>数据库类型</Label>
-		<Select
-			value={normalizeDatabaseType(formData.type)}
-			onValueChange={handleTypeChange}
-		>
+						<Select
+							value={normalizeDatabaseType(formData.type)}
+							onValueChange={handleTypeChange}
+						>
 							<SelectTrigger id={typeId}>
 								<SelectValue placeholder="选择数据库类型" />
 							</SelectTrigger>
 							<SelectContent>
-				{DATABASE_TYPES.map((type) => (
-					<SelectItem key={type.value} value={type.value}>
-						{type.label}
-					</SelectItem>
-				))}
+								{DATABASE_TYPES.map((type) => (
+									<SelectItem key={type.value} value={type.value}>
+										{type.label}
+									</SelectItem>
+								))}
 							</SelectContent>
 						</Select>
 					</div>

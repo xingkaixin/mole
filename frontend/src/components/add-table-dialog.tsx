@@ -121,9 +121,9 @@ export function AddTableDialog({
 									<SelectItem key={conn.id} value={conn.id}>
 										<div className="flex items-center gap-2">
 											<span>{conn.name}</span>
-						<Badge variant="outline" className="text-xs">
-							{getDatabaseTypeLabel(conn.type)}
-						</Badge>
+											<Badge variant="outline" className="text-xs">
+												{getDatabaseTypeLabel(conn.type)}
+											</Badge>
 											<Badge variant="secondary" className="text-xs">
 												{conn.tables.length} 表
 											</Badge>

@@ -2,16 +2,16 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Sidebar } from "@/components/Sidebar";
 import { Toaster } from "@/components/ui/sonner";
-import { AnalysisDetailPage } from "@/pages/AnalysisDetailPage";
-import { ConfigPage } from "@/pages/ConfigPage";
-import { TaskManagementPage } from "@/pages/TaskManagementPage";
-import { WelcomePage } from "@/pages/WelcomePage";
-import type { AppStep, DatabaseConfig, RuleResult, TableInfo } from "@/types";
 import {
 	DEFAULT_DATABASE_TYPE,
 	getDefaultPort,
 	normalizeDatabaseType,
 } from "@/lib/databaseTypes";
+import { AnalysisDetailPage } from "@/pages/AnalysisDetailPage";
+import { ConfigPage } from "@/pages/ConfigPage";
+import { TaskManagementPage } from "@/pages/TaskManagementPage";
+import { WelcomePage } from "@/pages/WelcomePage";
+import type { AppStep, DatabaseConfig, RuleResult, TableInfo } from "@/types";
 
 const createDefaultConfig = (): DatabaseConfig => ({
 	id: "",
@@ -33,344 +33,348 @@ const normalizeConfigRecord = (config: DatabaseConfig): DatabaseConfig => {
 		port: config.port || getDefaultPort(normalizedType),
 	};
 };
+
 import {
-  ConnectDatabase,
-  DeleteDatabaseConnection,
-  GetDatabaseConnections,
-  GetTableSelections,
-  GetTables,
-  SaveDatabaseConnection,
-  TestDatabaseConnection,
+	ConnectDatabase,
+	DeleteDatabaseConnection,
+	GetDatabaseConnections,
+	GetTableSelections,
+	GetTables,
+	SaveDatabaseConnection,
+	TestDatabaseConnection,
 } from "../wailsjs/go/backend/App.js";
 
 function App() {
-  const [currentStep, setCurrentStep] = useState<AppStep>("welcome");
-  const [previousStep, setPreviousStep] = useState<AppStep | null>(null);
-  const [connections, setConnections] = useState<DatabaseConfig[]>([]);
-  const [currentConnection, setCurrentConnection] =
-    useState<DatabaseConfig | null>(null);
-  const [currentAnalysisResult, setCurrentAnalysisResult] = useState<
-    any | null
-  >(null);
-  const [dbConfig, setDbConfig] = useState<DatabaseConfig>(() => createDefaultConfig());
-  const [connectionStatus, setConnectionStatus] = useState<string>("");
-  const [_tables, setTables] = useState<TableInfo[]>([]);
-  const [_selectedTables, setSelectedTables] = useState<string[]>([]);
-  const [_analysisResults, _setAnalysisResults] = useState<RuleResult[]>([]);
-  const [isAddingConnection, setIsAddingConnection] = useState(false);
+	const [currentStep, setCurrentStep] = useState<AppStep>("welcome");
+	const [previousStep, setPreviousStep] = useState<AppStep | null>(null);
+	const [connections, setConnections] = useState<DatabaseConfig[]>([]);
+	const [currentConnection, setCurrentConnection] =
+		useState<DatabaseConfig | null>(null);
+	const [currentAnalysisResult, setCurrentAnalysisResult] = useState<
+		any | null
+	>(null);
+	const [dbConfig, setDbConfig] = useState<DatabaseConfig>(() =>
+		createDefaultConfig(),
+	);
+	const [connectionStatus, setConnectionStatus] = useState<string>("");
+	const [_tables, setTables] = useState<TableInfo[]>([]);
+	const [_selectedTables, setSelectedTables] = useState<string[]>([]);
+	const [_analysisResults, _setAnalysisResults] = useState<RuleResult[]>([]);
+	const [isAddingConnection, setIsAddingConnection] = useState(false);
 
-  // 从后端存储加载保存的连接
-  useEffect(() => {
-    const loadConnections = async () => {
-      try {
-        const savedConnections = await GetDatabaseConnections();
-        setConnections((savedConnections || []).map(normalizeConfigRecord));
-      } catch (error) {
-        console.error("Failed to load connections:", error);
-        setConnections([]);
-      }
-    };
-    loadConnections();
-  }, []);
+	// 从后端存储加载保存的连接
+	useEffect(() => {
+		const loadConnections = async () => {
+			try {
+				const savedConnections = await GetDatabaseConnections();
+				setConnections((savedConnections || []).map(normalizeConfigRecord));
+			} catch (error) {
+				console.error("Failed to load connections:", error);
+				setConnections([]);
+			}
+		};
+		loadConnections();
+	}, []);
 
-  // 保存连接到后端存储
-  const saveConnections = async (newConnections: DatabaseConfig[]) => {
-    setConnections(newConnections.map(normalizeConfigRecord));
-    // 注意：这里我们不再需要手动保存到localStorage
-    // 每个连接在创建时已经通过SaveDatabaseConnection保存到后端
-  };
+	// 保存连接到后端存储
+	const saveConnections = async (newConnections: DatabaseConfig[]) => {
+		setConnections(newConnections.map(normalizeConfigRecord));
+		// 注意：这里我们不再需要手动保存到localStorage
+		// 每个连接在创建时已经通过SaveDatabaseConnection保存到后端
+	};
 
-  const updateConfig = (
-    field: keyof DatabaseConfig,
-    value: string | number
-  ) => {
-    setDbConfig((prev) => ({
-      ...prev,
-      [field]: field === "type" && typeof value === "string"
-        ? normalizeDatabaseType(value)
-        : value,
-    }));
-  };
+	const updateConfig = (
+		field: keyof DatabaseConfig,
+		value: string | number,
+	) => {
+		setDbConfig((prev) => ({
+			...prev,
+			[field]:
+				field === "type" && typeof value === "string"
+					? normalizeDatabaseType(value)
+					: value,
+		}));
+	};
 
-  const testConnection = async () => {
-    try {
-      const result = await TestDatabaseConnection(dbConfig);
-      setConnectionStatus(result);
-      toast.success("连接测试成功");
-    } catch (error) {
-      setConnectionStatus(
-        error instanceof Error ? error.message : String(error)
-      );
-      toast.error("连接测试失败");
-    }
-  };
+	const testConnection = async () => {
+		try {
+			const result = await TestDatabaseConnection(dbConfig);
+			setConnectionStatus(result);
+			toast.success("连接测试成功");
+		} catch (error) {
+			setConnectionStatus(
+				error instanceof Error ? error.message : String(error),
+			);
+			toast.error("连接测试失败");
+		}
+	};
 
-  const saveConnection = async () => {
-    if (!dbConfig.name.trim()) {
-      toast.error("请输入连接名称");
-      return;
-    }
+	const saveConnection = async () => {
+		if (!dbConfig.name.trim()) {
+			toast.error("请输入连接名称");
+			return;
+		}
 
-    try {
-      await TestDatabaseConnection(dbConfig);
+		try {
+			await TestDatabaseConnection(dbConfig);
 
-      const connectionToSave: DatabaseConfig = normalizeConfigRecord({
-        ...dbConfig,
-        // 如果是新增连接，生成新ID；如果是编辑，保持原ID
-        id: dbConfig.id || Date.now().toString(),
-      });
+			const connectionToSave: DatabaseConfig = normalizeConfigRecord({
+				...dbConfig,
+				// 如果是新增连接，生成新ID；如果是编辑，保持原ID
+				id: dbConfig.id || Date.now().toString(),
+			});
 
-      // 保存到后端存储
-      await SaveDatabaseConnection(connectionToSave);
+			// 保存到后端存储
+			await SaveDatabaseConnection(connectionToSave);
 
-      // 更新本地状态
-      let newConnections: DatabaseConfig[];
-      if (isAddingConnection) {
-        // 新增连接
-        newConnections = [...connections, connectionToSave];
-      } else {
-        // 编辑连接 - 替换原有连接
-        newConnections = connections.map((conn) =>
-          conn.id === connectionToSave.id ? connectionToSave : conn
-        );
-      }
-      saveConnections(newConnections);
+			// 更新本地状态
+			let newConnections: DatabaseConfig[];
+			if (isAddingConnection) {
+				// 新增连接
+				newConnections = [...connections, connectionToSave];
+			} else {
+				// 编辑连接 - 替换原有连接
+				newConnections = connections.map((conn) =>
+					conn.id === connectionToSave.id ? connectionToSave : conn,
+				);
+			}
+			saveConnections(newConnections);
 
-      setCurrentConnection(connectionToSave);
-      setIsAddingConnection(false);
+			setCurrentConnection(connectionToSave);
+			setIsAddingConnection(false);
 
-      // 返回首页
-      setCurrentStep("welcome");
+			// 返回首页
+			setCurrentStep("welcome");
 
-      toast.success(isAddingConnection ? "连接添加成功" : "连接更新成功");
-    } catch (_error) {
-      toast.error("连接测试失败，请检查配置");
-    }
-  };
+			toast.success(isAddingConnection ? "连接添加成功" : "连接更新成功");
+		} catch (_error) {
+			toast.error("连接测试失败，请检查配置");
+		}
+	};
 
-  const duplicateConnection = async (connection: DatabaseConfig) => {
-    try {
-      const duplicatedConnection: DatabaseConfig = {
-        ...normalizeConfigRecord(connection),
-        id: Date.now().toString(),
-        name: `${connection.name} _duplicate`,
-      };
+	const duplicateConnection = async (connection: DatabaseConfig) => {
+		try {
+			const duplicatedConnection: DatabaseConfig = {
+				...normalizeConfigRecord(connection),
+				id: Date.now().toString(),
+				name: `${connection.name} _duplicate`,
+			};
 
-      // 保存到后端存储
-      await SaveDatabaseConnection(duplicatedConnection);
+			// 保存到后端存储
+			await SaveDatabaseConnection(duplicatedConnection);
 
-      // 更新本地状态
-      const newConnections = [...connections, duplicatedConnection];
-      saveConnections(newConnections);
+			// 更新本地状态
+			const newConnections = [...connections, duplicatedConnection];
+			saveConnections(newConnections);
 
-      toast.success("连接复制成功");
-    } catch (error) {
-      console.error("Failed to duplicate connection:", error);
-      toast.error("连接复制失败");
-    }
-  };
+			toast.success("连接复制成功");
+		} catch (error) {
+			console.error("Failed to duplicate connection:", error);
+			toast.error("连接复制失败");
+		}
+	};
 
-  const connectAndGetTables = async (connection?: DatabaseConfig) => {
-    const config = connection || currentConnection;
-    if (!config) return;
+	const connectAndGetTables = async (connection?: DatabaseConfig) => {
+		const config = connection || currentConnection;
+		if (!config) return;
 
-    try {
-      await ConnectDatabase(config);
-      const tableList = await GetTables();
+		try {
+			await ConnectDatabase(config);
+			const tableList = await GetTables();
 
-      // 将表列表转换为TableInfo格式，初始状态为存在
-      const tableInfos: TableInfo[] = tableList.map((name) => ({
-        name,
-        exists: true,
-      }));
+			// 将表列表转换为TableInfo格式，初始状态为存在
+			const tableInfos: TableInfo[] = tableList.map((name) => ({
+				name,
+				exists: true,
+			}));
 
-      setTables(tableInfos);
+			setTables(tableInfos);
 
-      // 加载已保存的表选择状态
-      try {
-        const savedSelections = await GetTableSelections();
+			// 加载已保存的表选择状态
+			try {
+				const savedSelections = await GetTableSelections();
 
-        // 验证已保存的表是否仍然存在
-        const validSelections = savedSelections.filter((tableName) =>
-          tableInfos.some((table) => table.name === tableName)
-        );
+				// 验证已保存的表是否仍然存在
+				const validSelections = savedSelections.filter((tableName) =>
+					tableInfos.some((table) => table.name === tableName),
+				);
 
-        // 标记不存在的表
-        const updatedTables = tableInfos.map((table) => ({
-          ...table,
-          exists: true, // 新获取的表默认都存在
-        }));
+				// 标记不存在的表
+				const updatedTables = tableInfos.map((table) => ({
+					...table,
+					exists: true, // 新获取的表默认都存在
+				}));
 
-        setTables(updatedTables);
-        setSelectedTables(validSelections);
+				setTables(updatedTables);
+				setSelectedTables(validSelections);
 
-        // 如果有不存在的表，显示警告
-        const missingTables = savedSelections.filter(
-          (tableName) => !tableInfos.some((table) => table.name === tableName)
-        );
+				// 如果有不存在的表，显示警告
+				const missingTables = savedSelections.filter(
+					(tableName) => !tableInfos.some((table) => table.name === tableName),
+				);
 
-        if (missingTables.length > 0) {
-          console.warn(`以下表已不存在: ${missingTables.join(", ")}`);
-        }
-      } catch (error) {
-        console.warn("Failed to load saved table selections:", error);
-        setSelectedTables([]);
-      }
+				if (missingTables.length > 0) {
+					console.warn(`以下表已不存在: ${missingTables.join(", ")}`);
+				}
+			} catch (error) {
+				console.warn("Failed to load saved table selections:", error);
+				setSelectedTables([]);
+			}
 
-      setCurrentStep("analysis_tables");
-      toast.success("连接成功，已获取表清单");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error));
-    }
-  };
+			setCurrentStep("analysis_tables");
+			toast.success("连接成功，已获取表清单");
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : String(error));
+		}
+	};
 
-  const handleAddConnection = () => {
-    setDbConfig(createDefaultConfig());
-    setConnectionStatus("");
-    setIsAddingConnection(true);
-    setCurrentStep("config");
-  };
+	const handleAddConnection = () => {
+		setDbConfig(createDefaultConfig());
+		setConnectionStatus("");
+		setIsAddingConnection(true);
+		setCurrentStep("config");
+	};
 
-  const handleEditConnection = (connection: DatabaseConfig) => {
-    setDbConfig(normalizeConfigRecord(connection));
-    setConnectionStatus("");
-    setIsAddingConnection(false);
-    setCurrentStep("config");
-  };
+	const handleEditConnection = (connection: DatabaseConfig) => {
+		setDbConfig(normalizeConfigRecord(connection));
+		setConnectionStatus("");
+		setIsAddingConnection(false);
+		setCurrentStep("config");
+	};
 
-  const handleDeleteConnection = async (connectionId: string) => {
-    console.log(
-      "Deleting connection:",
-      connectionId,
-      "current connections:",
-      connections
-    );
-    try {
-      await DeleteDatabaseConnection(connectionId);
-      const newConnections = connections.filter(
-        (conn) => conn.id !== connectionId
-      );
-      console.log("New connections after delete:", newConnections);
-      saveConnections(newConnections);
+	const handleDeleteConnection = async (connectionId: string) => {
+		console.log(
+			"Deleting connection:",
+			connectionId,
+			"current connections:",
+			connections,
+		);
+		try {
+			await DeleteDatabaseConnection(connectionId);
+			const newConnections = connections.filter(
+				(conn) => conn.id !== connectionId,
+			);
+			console.log("New connections after delete:", newConnections);
+			saveConnections(newConnections);
 
-      // 如果删除的是当前选中的连接，清理 currentConnection
-      if (currentConnection?.id === connectionId) {
-        console.log("Clearing current connection");
-        setCurrentConnection(null);
-      }
+			// 如果删除的是当前选中的连接，清理 currentConnection
+			if (currentConnection?.id === connectionId) {
+				console.log("Clearing current connection");
+				setCurrentConnection(null);
+			}
 
-      toast.success("连接已删除");
-    } catch (error) {
-      toast.error("删除连接失败");
-      console.error("Failed to delete connection:", error);
-    }
-  };
+			toast.success("连接已删除");
+		} catch (error) {
+			toast.error("删除连接失败");
+			console.error("Failed to delete connection:", error);
+		}
+	};
 
-  const handleSelectConnection = (connection: DatabaseConfig) => {
-    setCurrentConnection(connection);
-    connectAndGetTables(connection);
-  };
+	const handleSelectConnection = (connection: DatabaseConfig) => {
+		setCurrentConnection(connection);
+		connectAndGetTables(connection);
+	};
 
-  const handleBack = () => {
-    if (isAddingConnection) {
-      setCurrentStep("welcome");
-      setIsAddingConnection(false);
-    } else if (previousStep) {
-      setCurrentStep(previousStep);
-      setPreviousStep(null);
-    } else {
-      setCurrentStep("welcome");
-    }
-  };
+	const handleBack = () => {
+		if (isAddingConnection) {
+			setCurrentStep("welcome");
+			setIsAddingConnection(false);
+		} else if (previousStep) {
+			setCurrentStep(previousStep);
+			setPreviousStep(null);
+		} else {
+			setCurrentStep("welcome");
+		}
+	};
 
-  const handleGoHome = () => {
-    setCurrentStep("welcome");
-  };
+	const handleGoHome = () => {
+		setCurrentStep("welcome");
+	};
 
-  const handleGoToTasks = () => {
-    setCurrentStep("tasks");
-  };
+	const handleGoToTasks = () => {
+		setCurrentStep("tasks");
+	};
 
-  const handleUpdateMetadata = async (connectionId: string) => {
-    try {
-      // 这里我们可以直接调用后端API，但为了保持一致性和更好的用户体验，
-      // 我们让DatabaseCard组件自己处理这个逻辑
-      toast.info("正在更新字典元数据...");
-    } catch (error) {
-      console.error("Failed to update metadata:", error);
-      toast.error("更新字典失败");
-    }
-  };
+	const handleUpdateMetadata = async (connectionId: string) => {
+		try {
+			// 这里我们可以直接调用后端API，但为了保持一致性和更好的用户体验，
+			// 我们让DatabaseCard组件自己处理这个逻辑
+			toast.info("正在更新字典元数据...");
+		} catch (error) {
+			console.error("Failed to update metadata:", error);
+			toast.error("更新字典失败");
+		}
+	};
 
-  const handleNavigateToAnalysisDetail = (result: any) => {
-    setPreviousStep(currentStep);
-    setCurrentAnalysisResult(result);
-    setCurrentStep("analysis_detail");
-  };
+	const handleNavigateToAnalysisDetail = (result: any) => {
+		setPreviousStep(currentStep);
+		setCurrentAnalysisResult(result);
+		setCurrentStep("analysis_detail");
+	};
 
-  const handleBackFromAnalysisDetail = () => {
-    setCurrentAnalysisResult(null);
-    if (previousStep) {
-      setCurrentStep(previousStep);
-      setPreviousStep(null);
-    } else {
-      setCurrentStep("tasks");
-    }
-  };
+	const handleBackFromAnalysisDetail = () => {
+		setCurrentAnalysisResult(null);
+		if (previousStep) {
+			setCurrentStep(previousStep);
+			setPreviousStep(null);
+		} else {
+			setCurrentStep("tasks");
+		}
+	};
 
-  return (
-    <div className="h-screen flex bg-white">
-      <Toaster />
+	return (
+		<div className="h-screen flex bg-white">
+			<Toaster />
 
-      {/* 左侧功能栏 */}
-      <Sidebar
-        onAddConnection={handleAddConnection}
-        onGoHome={handleGoHome}
-        onGoToTasks={handleGoToTasks}
-      />
+			{/* 左侧功能栏 */}
+			<Sidebar
+				onAddConnection={handleAddConnection}
+				onGoHome={handleGoHome}
+				onGoToTasks={handleGoToTasks}
+			/>
 
-      {/* 主内容区域 */}
-      <div className="flex-1 overflow-auto">
-        {currentStep === "welcome" && (
-          <WelcomePage
-            key={connections.length} // 强制重新渲染当连接数量变化时
-            connections={connections}
-            onAddConnection={handleAddConnection}
-            onEditConnection={handleEditConnection}
-            onDeleteConnection={handleDeleteConnection}
-            onSelectConnection={handleSelectConnection}
-            onDuplicateConnection={duplicateConnection}
-            onUpdateMetadata={handleUpdateMetadata}
-          />
-        )}
+			{/* 主内容区域 */}
+			<div className="flex-1 overflow-auto">
+				{currentStep === "welcome" && (
+					<WelcomePage
+						key={connections.length} // 强制重新渲染当连接数量变化时
+						connections={connections}
+						onAddConnection={handleAddConnection}
+						onEditConnection={handleEditConnection}
+						onDeleteConnection={handleDeleteConnection}
+						onSelectConnection={handleSelectConnection}
+						onDuplicateConnection={duplicateConnection}
+						onUpdateMetadata={handleUpdateMetadata}
+					/>
+				)}
 
-        {currentStep === "config" && (
-          <ConfigPage
-            config={dbConfig}
-            isAdding={isAddingConnection}
-            onConfigChange={updateConfig}
-            onTestConnection={testConnection}
-            onSaveConnection={saveConnection}
-            onBack={handleBack}
-            connectionStatus={connectionStatus}
-          />
-        )}
+				{currentStep === "config" && (
+					<ConfigPage
+						config={dbConfig}
+						isAdding={isAddingConnection}
+						onConfigChange={updateConfig}
+						onTestConnection={testConnection}
+						onSaveConnection={saveConnection}
+						onBack={handleBack}
+						connectionStatus={connectionStatus}
+					/>
+				)}
 
-        {currentStep === "tasks" && (
-          <TaskManagementPage
-            onNavigateToAnalysisDetail={handleNavigateToAnalysisDetail}
-          />
-        )}
+				{currentStep === "tasks" && (
+					<TaskManagementPage
+						onNavigateToAnalysisDetail={handleNavigateToAnalysisDetail}
+					/>
+				)}
 
-        {currentStep === "analysis_detail" && (
-          <AnalysisDetailPage
-            result={currentAnalysisResult}
-            onBack={handleBackFromAnalysisDetail}
-          />
-        )}
-      </div>
-    </div>
-  );
+				{currentStep === "analysis_detail" && (
+					<AnalysisDetailPage
+						result={currentAnalysisResult}
+						onBack={handleBackFromAnalysisDetail}
+					/>
+				)}
+			</div>
+		</div>
+	);
 }
 
 export default App;

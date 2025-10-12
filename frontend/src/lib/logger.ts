@@ -1,4 +1,4 @@
-import { LogFrontendAction } from '../../wailsjs/go/backend/App';
+import { LogFrontendAction } from "../../wailsjs/go/backend/App";
 
 /**
  * 前端日志记录工具
@@ -6,9 +6,9 @@ import { LogFrontendAction } from '../../wailsjs/go/backend/App';
  */
 
 export interface LogOptions {
-  module?: string;
-  action?: string;
-  details?: string;
+	module?: string;
+	action?: string;
+	details?: string;
 }
 
 /**
@@ -17,14 +17,20 @@ export interface LogOptions {
  * @param action 操作动作 (如: 'click', 'submit', 'navigate')
  * @param details 详细信息
  */
-export function logUserAction(module: string, action: string, details: string): void {
-  try {
-    LogFrontendAction(module, action, details);
-  } catch (error) {
-    // 如果日志调用失败，输出到控制台作为备选
-    console.error('Failed to log user action:', error);
-    console.log(`[${new Date().toISOString()}] [FRONTEND] ${module}: ${action} - ${details}`);
-  }
+export function logUserAction(
+	module: string,
+	action: string,
+	details: string,
+): void {
+	try {
+		LogFrontendAction(module, action, details);
+	} catch (error) {
+		// 如果日志调用失败，输出到控制台作为备选
+		console.error("Failed to log user action:", error);
+		console.log(
+			`[${new Date().toISOString()}] [FRONTEND] ${module}: ${action} - ${details}`,
+		);
+	}
 }
 
 /**
@@ -32,8 +38,11 @@ export function logUserAction(module: string, action: string, details: string): 
  * @param buttonName 按钮名称
  * @param componentName 组件名称
  */
-export function logButtonClick(buttonName: string, componentName: string): void {
-  logUserAction(componentName, 'click', `用户点击了${buttonName}按钮`);
+export function logButtonClick(
+	buttonName: string,
+	componentName: string,
+): void {
+	logUserAction(componentName, "click", `用户点击了${buttonName}按钮`);
 }
 
 /**
@@ -42,7 +51,7 @@ export function logButtonClick(buttonName: string, componentName: string): void 
  * @param toPage 目标页面
  */
 export function logNavigation(fromPage: string, toPage: string): void {
-  logUserAction('Navigation', 'navigate', `从 ${fromPage} 导航到 ${toPage}`);
+	logUserAction("Navigation", "navigate", `从 ${fromPage} 导航到 ${toPage}`);
 }
 
 /**
@@ -51,12 +60,16 @@ export function logNavigation(fromPage: string, toPage: string): void {
  * @param success 是否成功
  * @param error 错误信息 (可选)
  */
-export function logFormSubmit(formName: string, success: boolean, error?: string): void {
-  const details = success
-    ? `表单 ${formName} 提交成功`
-    : `表单 ${formName} 提交失败: ${error || '未知错误'}`;
+export function logFormSubmit(
+	formName: string,
+	success: boolean,
+	error?: string,
+): void {
+	const details = success
+		? `表单 ${formName} 提交成功`
+		: `表单 ${formName} 提交失败: ${error || "未知错误"}`;
 
-  logUserAction('Form', 'submit', details);
+	logUserAction("Form", "submit", details);
 }
 
 /**
@@ -66,12 +79,17 @@ export function logFormSubmit(formName: string, success: boolean, error?: string
  * @param success 是否成功
  * @param details 详细信息
  */
-export function logDatabaseOperation(operation: string, databaseName: string, success: boolean, details?: string): void {
-  const actionDetails = success
-    ? `数据库操作 ${operation} 在 ${databaseName} 上执行成功: ${details || '无额外信息'}`
-    : `数据库操作 ${operation} 在 ${databaseName} 上执行失败: ${details || '未知错误'}`;
+export function logDatabaseOperation(
+	operation: string,
+	databaseName: string,
+	success: boolean,
+	details?: string,
+): void {
+	const actionDetails = success
+		? `数据库操作 ${operation} 在 ${databaseName} 上执行成功: ${details || "无额外信息"}`
+		: `数据库操作 ${operation} 在 ${databaseName} 上执行失败: ${details || "未知错误"}`;
 
-  logUserAction('Database', operation, actionDetails);
+	logUserAction("Database", operation, actionDetails);
 }
 
 /**
@@ -80,9 +98,13 @@ export function logDatabaseOperation(operation: string, databaseName: string, su
  * @param operation 操作名称
  * @param error 错误对象或消息
  */
-export function logError(module: string, operation: string, error: Error | string): void {
-  const errorMessage = error instanceof Error ? error.message : error;
-  logUserAction(module, 'error', `${operation} 发生错误: ${errorMessage}`);
+export function logError(
+	module: string,
+	operation: string,
+	error: Error | string,
+): void {
+	const errorMessage = error instanceof Error ? error.message : error;
+	logUserAction(module, "error", `${operation} 发生错误: ${errorMessage}`);
 }
 
 /**
@@ -91,8 +113,12 @@ export function logError(module: string, operation: string, error: Error | strin
  * @param operation 操作名称
  * @param message 信息内容
  */
-export function logInfo(module: string, operation: string, message: string): void {
-  logUserAction(module, 'info', `${operation}: ${message}`);
+export function logInfo(
+	module: string,
+	operation: string,
+	message: string,
+): void {
+	logUserAction(module, "info", `${operation}: ${message}`);
 }
 
 /**
@@ -101,14 +127,23 @@ export function logInfo(module: string, operation: string, message: string): voi
  * @returns 返回一个带有预设模块名称的日志记录对象
  */
 export function createLogger(moduleName: string) {
-  return {
-    click: (buttonName: string) => logButtonClick(buttonName, moduleName),
-    navigate: (fromPage: string, toPage: string) => logNavigation(fromPage, toPage),
-    formSubmit: (formName: string, success: boolean, error?: string) => logFormSubmit(formName, success, error),
-    databaseOperation: (operation: string, databaseName: string, success: boolean, details?: string) =>
-      logDatabaseOperation(operation, databaseName, success, details),
-    error: (operation: string, error: Error | string) => logError(moduleName, operation, error),
-    info: (operation: string, message: string) => logInfo(moduleName, operation, message),
-    userAction: (action: string, details: string) => logUserAction(moduleName, action, details),
-  };
+	return {
+		click: (buttonName: string) => logButtonClick(buttonName, moduleName),
+		navigate: (fromPage: string, toPage: string) =>
+			logNavigation(fromPage, toPage),
+		formSubmit: (formName: string, success: boolean, error?: string) =>
+			logFormSubmit(formName, success, error),
+		databaseOperation: (
+			operation: string,
+			databaseName: string,
+			success: boolean,
+			details?: string,
+		) => logDatabaseOperation(operation, databaseName, success, details),
+		error: (operation: string, error: Error | string) =>
+			logError(moduleName, operation, error),
+		info: (operation: string, message: string) =>
+			logInfo(moduleName, operation, message),
+		userAction: (action: string, details: string) =>
+			logUserAction(moduleName, action, details),
+	};
 }

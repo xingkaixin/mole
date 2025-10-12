@@ -12,12 +12,12 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import type { DatabaseConfig } from "@/types";
 import {
 	DATABASE_TYPES,
 	getDefaultPort,
 	normalizeDatabaseType,
 } from "@/lib/databaseTypes";
+import type { DatabaseConfig } from "@/types";
 
 interface DatabaseConfigFormProps {
 	config: DatabaseConfig;
@@ -79,19 +79,19 @@ export function DatabaseConfigForm({
 				{/* 数据库类型 - 固定为 MySQL */}
 				<div className="space-y-2">
 					<Label htmlFor={`${idPrefix}-type`}>数据库类型</Label>
-				<Select
-					value={normalizeDatabaseType(config.type)}
-					onValueChange={handleTypeChange}
-				>
+					<Select
+						value={normalizeDatabaseType(config.type)}
+						onValueChange={handleTypeChange}
+					>
 						<SelectTrigger id={`${idPrefix}-type`}>
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-						{DATABASE_TYPES.map((dbType) => (
-							<SelectItem key={dbType.value} value={dbType.value}>
-								{dbType.label}
-							</SelectItem>
-						))}
+							{DATABASE_TYPES.map((dbType) => (
+								<SelectItem key={dbType.value} value={dbType.value}>
+									{dbType.label}
+								</SelectItem>
+							))}
 						</SelectContent>
 					</Select>
 				</div>

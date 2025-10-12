@@ -16,9 +16,9 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { DatabaseConfig } from "@/types";
-import { createLogger } from "@/lib/logger";
 import { getDatabaseTypeLabel } from "@/lib/databaseTypes";
+import { createLogger } from "@/lib/logger";
+import type { DatabaseConfig } from "@/types";
 
 type DatabaseCardProps = {
 	connection: DatabaseConfig;
@@ -37,17 +37,17 @@ export function DatabaseCard({
 }: DatabaseCardProps) {
 	const [isUpdating, setIsUpdating] = useState(false);
 	// 创建数据库卡片日志记录器
-	const logger = createLogger('DatabaseCard');
+	const logger = createLogger("DatabaseCard");
 
 	const handleDelete = () => {
-		logger.info('删除连接', `删除数据库连接 - ${connection.name}`);
+		logger.info("删除连接", `删除数据库连接 - ${connection.name}`);
 		onDelete(connection.id);
 	};
 
 	const handleUpdateMetadata = async () => {
 		if (isUpdating) return; // 防止重复点击
 
-		logger.info('更新元数据', `开始更新数据库元数据 - ${connection.name}`);
+		logger.info("更新元数据", `开始更新数据库元数据 - ${connection.name}`);
 		setIsUpdating(true);
 		toast.info(`正在更新 "${connection.name}" 的字典元数据...`, {
 			description: "这可能需要几秒钟时间",
@@ -62,7 +62,7 @@ export function DatabaseCard({
 
 			// 根据返回的状态显示相应的消息
 			if (result.status === "success") {
-				logger.info('元数据更新成功', `${connection.name} - ${result.message}`);
+				logger.info("元数据更新成功", `${connection.name} - ${result.message}`);
 				toast.success(
 					`"${result.connectionName || connection.name}" 字典更新成功`,
 					{
@@ -78,7 +78,10 @@ export function DatabaseCard({
 					},
 				);
 			} else {
-				logger.error('元数据更新失败', `${connection.name} - ${result.message}`);
+				logger.error(
+					"元数据更新失败",
+					`${connection.name} - ${result.message}`,
+				);
 				toast.error(
 					`"${result.connectionName || connection.name}" 字典更新失败`,
 					{
@@ -93,7 +96,7 @@ export function DatabaseCard({
 		} catch (error) {
 			console.error("更新字典失败:", error);
 			const errorMessage = error instanceof Error ? error.message : "未知错误";
-			logger.error('元数据更新异常', `${connection.name} - ${errorMessage}`);
+			logger.error("元数据更新异常", `${connection.name} - ${errorMessage}`);
 			toast.error(`"${connection.name}" 字典更新失败`, {
 				description: errorMessage,
 				action: {
@@ -123,17 +126,21 @@ export function DatabaseCard({
 					<MoreVertical className="w-4 h-4 text-muted-foreground" />
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end">
-					<DropdownMenuItem onClick={() => {
-						logger.info('编辑连接', `编辑数据库连接 - ${connection.name}`);
-						onEdit(connection);
-					}}>
+					<DropdownMenuItem
+						onClick={() => {
+							logger.info("编辑连接", `编辑数据库连接 - ${connection.name}`);
+							onEdit(connection);
+						}}
+					>
 						<Edit className="w-4 h-4 mr-2" />
 						编辑
 					</DropdownMenuItem>
-					<DropdownMenuItem onClick={() => {
-						logger.info('复制连接', `复制数据库连接 - ${connection.name}`);
-						onDuplicate(connection);
-					}}>
+					<DropdownMenuItem
+						onClick={() => {
+							logger.info("复制连接", `复制数据库连接 - ${connection.name}`);
+							onDuplicate(connection);
+						}}
+					>
 						<Copy className="w-4 h-4 mr-2" />
 						复制
 					</DropdownMenuItem>
@@ -163,10 +170,10 @@ export function DatabaseCard({
 				{connection.name}
 			</h3>
 			<div className="space-y-1 text-sm">
-		<p className="text-muted-foreground">
-			<span className="text-foreground font-medium">类型:</span>{" "}
-			{getDatabaseTypeLabel(connection.type)}
-		</p>
+				<p className="text-muted-foreground">
+					<span className="text-foreground font-medium">类型:</span>{" "}
+					{getDatabaseTypeLabel(connection.type)}
+				</p>
 				<p className="text-muted-foreground">
 					<span className="text-foreground font-medium">主机:</span>{" "}
 					{connection.host}:{connection.port}

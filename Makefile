@@ -1,4 +1,4 @@
-.PHONY: dev build-windows build-mac clean deps lint format check help
+.PHONY: dev build-windows build-mac clean deps lint format check test help
 
 # Run the application in development mode
 dev:
@@ -34,6 +34,10 @@ format:
 check:
 	cd frontend && bun run check
 
+# Test frontend code
+test:
+	cd frontend && bun run test
+
 # Help command to show available targets
 help:
 	@echo "Available commands:"
@@ -45,3 +49,4 @@ help:
 	@echo "  make lint          - Lint frontend code"
 	@echo "  make format        - Format frontend code"
 	@echo "  make check         - Check and apply fixes to frontend code"
+	@echo "  make test         - Test frontend code"

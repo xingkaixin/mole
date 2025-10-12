@@ -18,9 +18,9 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import type { DatabaseConfig } from "@/types";
-import { createLogger } from "@/lib/logger";
 import { getDatabaseTypeLabel } from "@/lib/databaseTypes";
+import { createLogger } from "@/lib/logger";
+import type { DatabaseConfig } from "@/types";
 
 interface WelcomePageProps {
 	connections: DatabaseConfig[];
@@ -42,7 +42,7 @@ export function WelcomePage({
 	onUpdateMetadata,
 }: WelcomePageProps) {
 	// 创建欢迎页面日志记录器
-	const logger = createLogger('WelcomePage');
+	const logger = createLogger("WelcomePage");
 
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [connectionToDelete, setConnectionToDelete] =
@@ -55,8 +55,8 @@ export function WelcomePage({
 	});
 
 	// 获取所有唯一的数据库类型
-const databaseTypes = useMemo(() => {
-    const types = [...new Set(connections.map((conn) => conn.type))];
+	const databaseTypes = useMemo(() => {
+		const types = [...new Set(connections.map((conn) => conn.type))];
 		return types.filter(Boolean);
 	}, [connections]);
 
@@ -85,14 +85,14 @@ const databaseTypes = useMemo(() => {
 	}, [connections, filters]);
 
 	const _handleDeleteClick = (connection: DatabaseConfig) => {
-		logger.info('删除对话框', `打开删除确认对话框 - 连接: ${connection.name}`);
+		logger.info("删除对话框", `打开删除确认对话框 - 连接: ${connection.name}`);
 		setConnectionToDelete(connection);
 		setDeleteDialogOpen(true);
 	};
 
 	const handleConfirmDelete = () => {
 		if (connectionToDelete?.id) {
-			logger.info('确认删除', `删除数据库连接 - ${connectionToDelete.name}`);
+			logger.info("确认删除", `删除数据库连接 - ${connectionToDelete.name}`);
 			onDeleteConnection(connectionToDelete.id);
 		}
 		setDeleteDialogOpen(false);
@@ -105,7 +105,7 @@ const databaseTypes = useMemo(() => {
 	};
 
 	const clearFilters = () => {
-		logger.info('清除过滤器', '清除所有搜索和类型过滤器');
+		logger.info("清除过滤器", "清除所有搜索和类型过滤器");
 		setFilters({ searchText: "", type: "all" });
 	};
 
@@ -171,11 +171,11 @@ const databaseTypes = useMemo(() => {
 								</SelectTrigger>
 								<SelectContent>
 									<SelectItem value="all">全部类型</SelectItem>
-                  {databaseTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {getDatabaseTypeLabel(type)}
-                    </SelectItem>
-                  ))}
+									{databaseTypes.map((type) => (
+										<SelectItem key={type} value={type}>
+											{getDatabaseTypeLabel(type)}
+										</SelectItem>
+									))}
 								</SelectContent>
 							</Select>
 						</div>
@@ -197,7 +197,7 @@ const databaseTypes = useMemo(() => {
 					<button
 						type="button"
 						onClick={() => {
-							logger.click('添加数据库连接');
+							logger.click("添加数据库连接");
 							onAddConnection();
 						}}
 						className="aspect-square border-2 border-dashed border-border rounded-lg flex items-center justify-center hover:border-primary hover:bg-secondary/50 transition-colors group"
@@ -237,7 +237,7 @@ const databaseTypes = useMemo(() => {
 						<button
 							type="button"
 							onClick={() => {
-								logger.click('添加数据库连接');
+								logger.click("添加数据库连接");
 								onAddConnection();
 							}}
 							className="aspect-square border-2 border-dashed border-border rounded-lg flex items-center justify-center hover:border-primary hover:bg-secondary/50 transition-colors group"
